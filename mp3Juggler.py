@@ -20,7 +20,6 @@ class mp3Juggler:
 
 
     def juggle(self, file):
-        # print("Trying to play file...")
         self.lock.acquire()
         try:
             file['prio'] = self._counts.get(file['address'], 0)+ 1

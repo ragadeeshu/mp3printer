@@ -19,12 +19,6 @@
 
   }
   #nickname{
-
-
-    /*margin: 0 auto;*/
-    /*width: 90%;*/
-
-    /*max-width: 800px;*/
     font-family:Arial, Helvetica, sans-serif;
     color:#D0B11B;
     font-size:12px;
@@ -143,7 +137,7 @@
     $("div#terminal").prepend("</br>" +data);
     console.log(data);
   };
-  // var lastFade = new Date().getTime();
+
   var unfading = false;
   var child = false;
   var lastcancel = 0;
@@ -177,18 +171,13 @@
     }
   }
 
-
-  // file selection
   function FileSelectHandler(e) {
-    // cancel event and hover styling
     e.stopPropagation();
     e.preventDefault();
     $("#overlay").fadeOut(150);
     unfading = false;
     lastcancel = e.timeStamp;
-    // fetch FileList object
     var files = e.target.files || e.originalEvent.dataTransfer.files;
-    // process all File objects
     for (var i = 0, f; f = files[i]; i++) {
       ParseFile(f);
     }
@@ -219,9 +208,8 @@
     $("div#playlist").hide();
     $("#connection").show();
     $('#nickname').hide();
-    // create websocket instance
+
     ws = new WebSocket("ws://" + window.location.host + "/ws");
-    // Handle incoming websocket message callback
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
@@ -236,19 +224,19 @@
         break;
       }
     };
-    // Close Websocket callback
+
     ws.onclose = function(evt) {
       $("div#playlist").hide();
       $('#nickname').hide();
       $("#connection").show();
     };
-    // Open Websocket callback
+
     ws.onopen = function(evt) {
       $("div#playlist").show();
       $('#nickname').show();
       $("#connection").hide();
     };
-    //Hoverfunction for file upload.
+
     $("html").on("dragover", FileDragHover);
     $("html").on("dragleave", FileDragHover);
     $("html").on("drop", FileSelectHandler);
