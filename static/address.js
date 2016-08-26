@@ -18,7 +18,7 @@ if (RTCPeerConnection) (function () {
     if (newAddr in addrs) return;
     else addrs[newAddr] = true;
     var displayAddrs = Object.keys(addrs).filter(function (k) { return addrs[k]; });
-    address = displayAddrs[1] || "n/a";
+    address = displayAddrs[0];
   }
   function grepSDP(sdp) {
     var hosts = [];
