@@ -1,0 +1,262 @@
+<!-- \<!doctype html> -->
+<html>
+<head>
+  <title>Deeshu mp3 printer</title>
+  <meta charset="utf-8" />
+  <style type="text/css">
+  html {
+    margin: 0px;
+    height: 100%;
+    width: 100%;
+  }
+
+  .child-elements {
+    pointer-events: none;
+  }
+  a{
+    pointer-events: auto;
+
+
+  }
+  #nickname{
+
+
+    /*margin: 0 auto;*/
+    /*width: 90%;*/
+
+    /*max-width: 800px;*/
+    font-family:Arial, Helvetica, sans-serif;
+    color:#D0B11B;
+    font-size:12px;
+    text-shadow: 1px 1px 0px #5a4d0c;
+    background:#222;
+    border:#D0B11B 1px solid;
+
+    margin-bottom: 2em;
+
+    -moz-border-radius:3px;
+    -webkit-border-radius:3px;
+    border-radius:3px;
+
+    -moz-box-shadow: 0px 0px 5px 0px #D0B11B;
+    -webkit-box-shadow: 0px 0px 5px 0px #D0B11B;
+    box-shadow: 0px 0px 3px 0px #D0B11B;
+    pointer-events: auto;
+    text-align: center;
+
+  }
+
+  body {
+    text-align: center;
+    margin: 0px;
+    min-height: 100%;
+    width: 100%;
+    box-shadow:inset 1px 1px 40px 1px rgba(0,0,0,.45);
+    background:#000;
+    color:#D0B11B;
+    background-size:cover;
+    overflow:hidden;
+  }
+  progress[value] {
+    /* Reset the default appearance */
+    -webkit-appearance: none;
+    appearance: none;
+
+    width: 100%;
+    height: 100%;;
+  }
+
+  #playlist {
+
+  }
+
+  #overlay {
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    z-index: 6;
+    display: none;
+    content: "";
+    position: absolute;
+    background:rgba(0,0,0,.75);
+    text-align:center;
+    font-weight: bold;
+    text-align: center;
+    color: #D0B11B;
+    border: 10px dashed #D0B11B;
+    cursor: default;
+    font-size: 3em;
+
+  }
+  #overlay > p {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    margin-top: -1em;
+  }
+
+  #page_body {
+    padding: 2em;
+  }
+
+  </style>
+  <link rel="stylesheet" type="text/css" href="{{ static_url("table.css") }}">
+  <script src="http://code.jquery.com/jquery.min.js"></script>
+  <script type="text/javascript" src="{{ static_url("base64.js") }}" /></script>
+  <script type="text/javascript" src="{{ static_url("address.js") }}" /></script>
+  <script>
+
+  function addTable(list) {
+    var table = $('<table></table>').addClass('playtable');
+    var headerRow = $('<tr></tr>');
+    var headers = ['File','Progress','User', 'Prio'];
+    for(i=0; i<headers.length; i++){
+      var header = $('<th></th>').text(headers[i]);
+      headerRow.append(header);
+    }
+    table.append(headerRow);
+
+    for(i=0; i<list.length; i++){
+      var curr = list[i];
+      var row = $('<tr></tr>');
+      var contents = [
+        '<a href="'+encodeURI(curr['path'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
+        "<progress value='0' id='p"+i+"'><span>0</span>%</progress>",
+        curr['nick']+"("+curr['address']+")",
+        curr['prio']
+      ]
+      for(o=0; o<contents.length; o++){
+        var cell = $('<td></td>').html(contents[o]);
+        row.append(cell);
+      }
+      table.addClass()
+      table.append(row);
+    }
+    $('#playlist').html(table);
+  }
+
+  // log function
+  log = function(data){
+    $("div#terminal").prepend("</br>" +data);
+    console.log(data);
+  };
+  // var lastFade = new Date().getTime();
+  var unfading = false;
+  function FileDragHover(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    if(e.type == "dragover"){
+      $("#overlay").fadeIn(150);
+      unfading = false
+    } else if (e.type == "dragleave"){
+      unfading = true
+      setTimeout(function(){
+        if(unfading){
+          unfading = false;
+          $("#overlay").fadeOut(150);
+        }
+      }, 100);
+    }
+  }
+
+
+  // file selection
+  function FileSelectHandler(e) {
+    // cancel event and hover styling
+    e.stopPropagation();
+    e.preventDefault();
+    $("#overlay").fadeOut(150);
+    unfading = false;
+    // fetch FileList object
+    var files = e.target.files || e.originalEvent.dataTransfer.files;
+    // process all File objects
+    for (var i = 0, f; f = files[i]; i++) {
+      ParseFile(f);
+    }
+  }
+  function ParseFile(file) {
+    if(file.type =="audio/mp3"){
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var arrayBuffer = e.target.result;
+        fileToUpload={
+          "nick":$('#nickname').val(),
+          "address":address,
+          "filename":file.name,
+          "file":base64ArrayBuffer(arrayBuffer)
+        };
+        ws.send(JSON.stringify(fileToUpload));
+      }
+      reader.readAsArrayBuffer(file);
+    }
+    else {
+      alert("mp3 is the only supported format!");
+    }
+  }
+  var ws;
+  $(document).ready(function () {
+    $("div#playlist").hide();
+    $("#connection").show();
+    $('#nickname').hide();
+    // create websocket instance
+    ws = new WebSocket("ws://" + window.location.host + "/ws");
+    // Handle incoming websocket message callback
+    ws.onmessage = function(evt) {
+      var message = JSON.parse(evt.data);
+      switch(message.type){
+        case 'list':
+        addTable(message.list);
+        break;
+        case 'fallback':
+        $("#playlist").html(message.filename);
+        break;
+        case 'progress':
+        $("#p0").val(message.position);
+        break;
+      }
+      // log("Message Received: " + evt.data);
+    };
+    // Close Websocket callback
+    ws.onclose = function(evt) {
+      $("div#playlist").hide();
+      $('#nickname').hide();
+      $("#connection").show();
+    };
+    // Open Websocket callback
+    ws.onopen = function(evt) {
+      $("div#playlist").show();
+      $('#nickname').show();
+      $("#connection").hide();
+    };
+    //Hoverfunction for file upload.
+    $("html").on("dragover", FileDragHover);
+    $("html").on("dragleave", FileDragHover);
+    $("html").on("drop", FileSelectHandler);
+  });
+  </script>
+</head>
+
+<body>
+  <div id="overlay" class="child-elements">
+    <p>
+      Drop files here to upload!
+    </p>
+  </div>
+  <section id = "page_body" class="child-elements">
+    <h1>Welcome to the Deeshu mp3 printer</h1>
+    <input id="nickname" type ="text" placeholder="Name goes here...">
+    <div id="connection_details">
+      <label id="connection">NO CONNECTION<br>Refresh the page.</label>
+    </div>
+    <div id ="playlist">
+
+    </div>
+    <div id="terminal">
+
+    </div>
+  </section>
+</body>
+</html>
