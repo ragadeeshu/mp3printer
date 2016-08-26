@@ -145,20 +145,35 @@
   };
   // var lastFade = new Date().getTime();
   var unfading = false;
+  var child = false;
+  var lastcancel = 0;
   function FileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
     if(e.type == "dragover"){
       $("#overlay").fadeIn(150);
+      lastcancel = e.timeStamp;
       unfading = false
-    } else if (e.type == "dragleave"){
+    } else if (e.type == "dragleave" && child == false){
       unfading = true
       setTimeout(function(){
-        if(unfading){
+        if(lastcancel < e.timeStamp && unfading && !child){
           unfading = false;
           $("#overlay").fadeOut(150);
         }
-      }, 100);
+      }, 400);
+    }
+  }
+  function ChildFileDragHover(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    lastcancel = e.timeStamp;
+    unfading = false
+    $("#overlay").fadeIn(0);
+    if(e.type == "dragover"){
+      cildd = true;
+    } else if (e.type == "dragleave"){
+      child = false;
     }
   }
 
@@ -170,6 +185,7 @@
     e.preventDefault();
     $("#overlay").fadeOut(150);
     unfading = false;
+    lastcancel = e.timeStamp;
     // fetch FileList object
     var files = e.target.files || e.originalEvent.dataTransfer.files;
     // process all File objects
@@ -179,18 +195,20 @@
   }
   function ParseFile(file) {
     if(file.type =="audio/mp3"){
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var arrayBuffer = e.target.result;
-        fileToUpload={
-          "nick":$('#nickname').val(),
-          "address":address,
-          "filename":file.name,
-          "file":base64ArrayBuffer(arrayBuffer)
-        };
-        ws.send(JSON.stringify(fileToUpload));
-      }
-      reader.readAsArrayBuffer(file);
+      var req = new XMLHttpRequest();
+      req.onreadystatechange = function (aEvt) {
+        if (req.readyState == 4 && req.status == 200) {
+          var fileMessage={
+            "nick":$('#nickname').val(),
+            "address":address,
+            "filename":file.name
+          };
+          ws.send(JSON.stringify(fileMessage));
+        }
+      };
+      req.open('post', 'upload', true)
+      req.setRequestHeader("filename", file.name);
+      req.send(file);
     }
     else {
       alert("mp3 is the only supported format!");
@@ -217,7 +235,6 @@
         $("#p0").val(message.position);
         break;
       }
-      // log("Message Received: " + evt.data);
     };
     // Close Websocket callback
     ws.onclose = function(evt) {
@@ -235,6 +252,12 @@
     $("html").on("dragover", FileDragHover);
     $("html").on("dragleave", FileDragHover);
     $("html").on("drop", FileSelectHandler);
+    $("a").on("dragover", ChildFileDragHover);
+    $("a").on("dragleave", ChildFileDragHover);
+    $("a").on("drop", FileSelectHandler);
+    $("input").on("dragover", ChildFileDragHover);
+    $("input").on("dragleave", ChildFileDragHover);
+    $("input").on("drop", FileSelectHandler);
   });
   </script>
 </head>
@@ -249,7 +272,7 @@
     <h1>Welcome to the Deeshu mp3 printer</h1>
     <input id="nickname" type ="text" placeholder="Name goes here...">
     <div id="connection_details">
-      <label id="connection">NO CONNECTION<br>Refresh the page.</label>
+      <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
     </div>
     <div id ="playlist">
 
