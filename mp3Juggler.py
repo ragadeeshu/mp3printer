@@ -25,10 +25,12 @@ class mp3Juggler:
             file['prio'] = self._counts.get(file['address'], 0)+ 1
             self._counts[file['address']] = file ['prio']
             index = 0
-            for item in self._songlist:
-                if(item['prio']>file['prio']):
-                    break
-                index+= 1
+            if (len(self._songlist)) > 0:
+                index = 1
+                for item in self._songlist[1:]:
+                    if(item['prio']>file['prio']):
+                        break
+                    index+= 1
             self._songlist.insert(index, file)
 
             if(len(self._songlist)) == 1:
