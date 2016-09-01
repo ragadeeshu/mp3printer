@@ -1,5 +1,5 @@
 import os
-import base64
+import uuid
 import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
@@ -8,12 +8,7 @@ import socket
 import json
 import connections
 from mp3Juggler import mp3Juggler
-'''
-This is a simple Websocket Echo server that uses the Tornado websocket handler.
-Please run `pip install tornado` with python of version 2.7.9 or greater to install tornado.
-This program will echo back the reverse of whatever it recieves.
-Messages are output to the terminal for debuggin purposes.
-'''
+
 clients = connections.Connections()
 juggler = mp3Juggler(clients)
 __UPLOADS__ = "static/songs/"
@@ -24,9 +19,16 @@ class IndexHandler(tornado.web.RequestHandler):
 
 class Upload(tornado.web.RequestHandler):
     def post(self):
-        fh = open(__UPLOADS__ + self.request.headers.get('Filename'), 'wb')
+        filename = self.request.headers.get('Filename')
+        extn = os.path.splitext(filename)[1]
+        infile = {'nick':self.request.headers.get('nick'),
+        'filename':filename,
+        'address':self.request.remote_ip,
+        'path':__UPLOADS__ + str(uuid.uuid4()) + extn}
+        fh = open(infile['path'], 'wb')
         fh.write(self.request.body)
         self.finish()
+        juggler.juggle(infile)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
 
@@ -34,10 +36,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         clients.add_conneciton(self)
         self.write_message(json.dumps(juggler.get_list()))
 
-    def on_message(self, message):
-        parsed_json = json.loads(message)
-        parsed_json['path'] = __UPLOADS__+parsed_json['filename']
-        juggler.juggle(parsed_json)
+    # def on_message(self, message):
+        # parsed_json = json.loads(message)
+        # parsed_json['path'] = __UPLOADS__+parsed_json['filename']
+        # juggler.juggle(parsed_json)
 
     def on_close(self):
         print('connection closed')

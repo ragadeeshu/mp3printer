@@ -1,4 +1,5 @@
 import player
+import os
 # import connections
 from threading import Thread
 from threading import Event
@@ -62,6 +63,7 @@ class mp3Juggler:
             self.lock.acquire()
             try:
                 self._counts[self._songlist[0]['address']]-= 1
+                os.remove(self._songlist[0]['path'])
                 del(self._songlist[0])
                 if(not self._songlist):
                     self._player.play_fallback()

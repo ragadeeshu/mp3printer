@@ -60,7 +60,7 @@
     height: 100%;;
   }
 
-  #playlist {
+  #printlist {
 
   }
 
@@ -99,7 +99,6 @@
   </style>
   <link rel="stylesheet" type="text/css" href="{{ static_url("table.css") }}">
   <script src="http://code.jquery.com/jquery.min.js"></script>
-  <script type="text/javascript" src="{{ static_url("address.js") }}" /></script>
   <script>
 
   function addTable(list) {
@@ -128,7 +127,7 @@
       table.addClass()
       table.append(row);
     }
-    $('#playlist').html(table);
+    $('#printlist').html(table);
   }
 
   // log function
@@ -186,16 +185,11 @@
       var req = new XMLHttpRequest();
       req.onreadystatechange = function (aEvt) {
         if (req.readyState == 4 && req.status == 200) {
-          var fileMessage={
-            "nick":$('#nickname').val(),
-            "address":address,
-            "filename":file.name
-          };
-          ws.send(JSON.stringify(fileMessage));
         }
       };
       req.open('post', 'upload', true)
       req.setRequestHeader("filename", file.name);
+      req.setRequestHeader("nick", $('#nickname').val() );
       req.send(file);
     }
     else {
@@ -204,7 +198,7 @@
   }
   var ws;
   $(document).ready(function () {
-    $("div#playlist").hide();
+    $("div#printlist").hide();
     $("#connection").show();
     $('#nickname').hide();
 
@@ -216,7 +210,7 @@
         addTable(message.list);
         break;
         case 'fallback':
-        $("#playlist").html(message.filename);
+        $("#printlist").html(message.filename);
         break;
         case 'progress':
         $("#p0").val(message.position);
@@ -225,13 +219,13 @@
     };
 
     ws.onclose = function(evt) {
-      $("div#playlist").hide();
+      $("div#printlist").hide();
       $('#nickname').hide();
       $("#connection").show();
     };
 
     ws.onopen = function(evt) {
-      $("div#playlist").show();
+      $("div#printlist").show();
       $('#nickname').show();
       $("#connection").hide();
     };
@@ -261,7 +255,7 @@
     <div id="connection_details">
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
     </div>
-    <div id ="playlist">
+    <div id ="printlist">
 
     </div>
     <div id="terminal">
