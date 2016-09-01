@@ -5,9 +5,7 @@
   <meta charset="utf-8" />
   <style type="text/css">
   html {
-    margin: 0px;
-    height: 100%;
-    width: 100%;
+    overflow-y: scroll;
   }
 
   .child-elements {
@@ -19,6 +17,8 @@
 
   }
   #nickname{
+    pointer-events: auto;
+
     font-family:Arial, Helvetica, sans-serif;
     color:#D0B11B;
     font-size:12px;
@@ -35,7 +35,6 @@
     -moz-box-shadow: 0px 0px 5px 0px #D0B11B;
     -webkit-box-shadow: 0px 0px 5px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
-    pointer-events: auto;
     text-align: center;
 
   }
@@ -52,7 +51,6 @@
     overflow:hidden;
   }
   progress[value] {
-    /* Reset the default appearance */
     -webkit-appearance: none;
     appearance: none;
 
@@ -73,7 +71,7 @@
     z-index: 6;
     display: none;
     content: "";
-    position: absolute;
+    position: fixed;
     background:rgba(0,0,0,.75);
     text-align:center;
     font-weight: bold;
@@ -235,9 +233,6 @@
     $(".child-elements").on("dragover", ChildFileDragHover);
     $(".child-elements").on("dragleave", ChildFileDragHover);
     $(".child-elements").on("drop", FileSelectHandler);
-    // $("input").on("dragover", ChildFileDragHover);
-    // $("input").on("dragleave", ChildFileDragHover);
-    // $("input").on("drop", FileSelectHandler);
   });
   </script>
 </head>
