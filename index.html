@@ -208,7 +208,7 @@
         case 'list':
         addTable(message.list);
         case 'progress':
-        $("#p0").val(message.position);
+        $("#p0").animate({value:message.position}, 1000);
         break;
       }
     };
