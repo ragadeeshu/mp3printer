@@ -99,7 +99,6 @@
   </style>
   <link rel="stylesheet" type="text/css" href="{{ static_url("table.css") }}">
   <script src="http://code.jquery.com/jquery.min.js"></script>
-  <script type="text/javascript" src="{{ static_url("base64.js") }}" /></script>
   <script type="text/javascript" src="{{ static_url("address.js") }}" /></script>
   <script>
 
@@ -183,7 +182,7 @@
     }
   }
   function ParseFile(file) {
-    if(file.type =="audio/mp3"){
+    if(file.type.startsWith("audio")){
       var req = new XMLHttpRequest();
       req.onreadystatechange = function (aEvt) {
         if (req.readyState == 4 && req.status == 200) {
@@ -200,7 +199,7 @@
       req.send(file);
     }
     else {
-      alert("mp3 is the only supported format!");
+      alert("Please, only audio files.");
     }
   }
   var ws;
