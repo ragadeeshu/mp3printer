@@ -206,12 +206,11 @@
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
-        case 'list':
-        addTable(message.list);
-        break;
         case 'fallback':
         $("#printlist").html(message.filename);
         break;
+        case 'list':
+        addTable(message.list);
         case 'progress':
         $("#p0").val(message.position);
         break;

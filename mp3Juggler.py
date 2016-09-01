@@ -47,13 +47,16 @@ class mp3Juggler:
     def time_change(self):
         while True:
             time.sleep(1)
-            self.lock.acquire()
-            try:
-                position = self._player.get_position();
-            finally:
-                self.lock.release()
-            if position > 0:
-                self._clients.message_clients({'type':'progress', 'position':position})
+            self.send_progress()
+
+    def send_progress(self):
+        self.lock.acquire()
+        try:
+            position = self._player.get_position();
+        finally:
+            self.lock.release()
+        if position > 0:
+            self._clients.message_clients({'type':'progress', 'position':position})
 
 
     def play_next(self):
@@ -79,7 +82,8 @@ class mp3Juggler:
         self.lock.acquire()
         try:
             if(self._songlist):
-                return {'type':'list', 'list':self._songlist}
+                position = self._player.get_position();
+                return {'type':'list', 'position':position, 'list':self._songlist}
             else:
                 return {'type':'fallback', 'filename': "Now playing Slay Radio..."}
         finally:
