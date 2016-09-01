@@ -232,12 +232,12 @@
     $("html").on("dragover", FileDragHover);
     $("html").on("dragleave", FileDragHover);
     $("html").on("drop", FileSelectHandler);
-    $("a").on("dragover", ChildFileDragHover);
-    $("a").on("dragleave", ChildFileDragHover);
-    $("a").on("drop", FileSelectHandler);
-    $("input").on("dragover", ChildFileDragHover);
-    $("input").on("dragleave", ChildFileDragHover);
-    $("input").on("drop", FileSelectHandler);
+    $(".child-elements").on("dragover", ChildFileDragHover);
+    $(".child-elements").on("dragleave", ChildFileDragHover);
+    $(".child-elements").on("drop", FileSelectHandler);
+    // $("input").on("dragover", ChildFileDragHover);
+    // $("input").on("dragleave", ChildFileDragHover);
+    // $("input").on("drop", FileSelectHandler);
   });
   </script>
 </head>
