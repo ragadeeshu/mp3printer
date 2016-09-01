@@ -207,6 +207,8 @@
         break;
         case 'list':
         addTable(message.list);
+        $("#p0").val(message.position);
+        break;
         case 'progress':
         $("#p0").animate({value:message.position}, 1000, 'linear');
         break;
