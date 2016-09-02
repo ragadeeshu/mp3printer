@@ -48,13 +48,6 @@
     background-size:cover;
     overflow:hidden;
   }
-  /*progress[value] {
-    -webkit-appearance: none;
-    appearance: none;
-
-    width: 100%;
-    height: 100%;;
-  }*/
 
   #printlist {
 
@@ -99,7 +92,7 @@
   <script>
 
   function addTable(list) {
-    var table = $('<table></table>').addClass('playtable');
+    var table = $('<table></table>').addClass('printtable');
     var headerRow = $('<tr></tr>');
     var headers = ['File','Progress','User', 'Prio'];
     for(i=0; i<headers.length; i++){
@@ -113,7 +106,8 @@
       var row = $('<tr></tr>');
       var contents = [
         '<a href="'+encodeURI(curr['path'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
-        "<progress value='0' id='p"+i+"'><span>0</span>%</progress>",
+        "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
+        // "<progress value='0' id='p"+i+"'><span>0</span>%</progress>",
         curr['nick']+"("+curr['address']+")",
         curr['prio']
       ]
@@ -208,10 +202,11 @@
         break;
         case 'list':
         addTable(message.list);
-        $("#p0").val(message.position);
+        $("#p0").css({width:message.position*100+"%"});
         break;
         case 'progress':
-        $("#p0").animate({value:message.position}, 1000, 'linear');
+        // $("#p0").css({width:message.position*100+"%"});
+        $("#p0").animate({width:message.position*100+"%"}, 200);
         break;
       }
     };
