@@ -1,0 +1,87 @@
+
+/* Styling an indeterminate progress bar */
+
+progress:not(value) {
+}
+
+
+progress[value] {
+  appearance: none;
+  border: none;
+
+  width: 100%; height: 12px;
+  background-color: #151515;
+  border-radius: 2px;
+  box-shadow: 0 3px 3px rgba(0,0,0,.5) inset;
+  color: #222;
+
+  position: relative;
+  /*margin: 0 0 1.5em;*/
+}
+
+/*
+Webkit browsers provide two pseudo classes that can be use to style HTML5 progress element.
+-webkit-progress-bar -> To style the progress element container
+-webkit-progress-value -> To style the progress element value.
+*/
+
+progress[value]::-webkit-progress-bar {
+  background-color:  #151515;
+  border-radius: 2px;
+  box-shadow: 0 3px 3px rgba(0,0,0,.5) inset;
+}
+
+progress[value]::-webkit-progress-value {
+  position: relative;
+  background-size: 24px 12px, 100% 100%, 100% 100%;
+  border-radius:2px;
+}
+
+/* Firefox provides a single pseudo class to style the progress element value and not for container. -moz-progress-bar */
+
+progress[value]::-moz-progress-bar {
+  /* Gradient background with Stripes */
+  background-image:
+  -moz-linear-gradient( 135deg,
+    transparent,
+    transparent 33%,
+    rgba(0,0,0,.1) 33%,
+    rgba(0,0,0,.1) 66%,
+    transparent 66%),
+    -moz-linear-gradient( top,
+      rgba(255, 255, 255, .25),
+      rgba(0,0,0,.2)),
+      -moz-linear-gradient( left, #161303, #D0B11B);
+
+      background-size: 24px 12px, 100% 100%, 100% 100%;
+      border-radius:2px;
+
+    }
+
+    progress::-webkit-progress-value  {
+      background-image:
+      -webkit-linear-gradient( 135deg,
+        transparent,
+        transparent 33%,
+        rgba(0,0,0,.1) 33%,
+        rgba(0,0,0,.1) 66%,
+        transparent 66%),
+        -webkit-linear-gradient( top,
+          rgba(255, 255, 255, .25),
+          rgba(0,0,0,.2)),
+          -webkit-linear-gradient( left, #222, #9d8915);
+        }
+
+        progress::-moz-progress-bar {
+          background-image:
+          -moz-linear-gradient( 135deg,
+            transparent,
+            transparent 33%,
+            rgba(0,0,0,.1) 33%,
+            rgba(0,0,0,.1) 66%,
+            transparent 66%),
+            -moz-linear-gradient( top,
+              rgba(255, 255, 255, .25),
+              rgba(0,0,0,.2)),
+              -moz-linear-gradient( left, #222, #9d8915);
+            }
