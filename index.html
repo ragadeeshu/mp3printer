@@ -36,6 +36,11 @@
     text-align: center;
 
   }
+  #disclaimer{
+  }
+  #foot{
+    padding: 1em;
+  }
 
   body {
     text-align: center;
@@ -89,7 +94,14 @@
   <link rel="stylesheet" type="text/css" href="{{ static_url("table.css") }}">
   <link rel="stylesheet" type="text/css" href="{{ static_url("progress.css") }}">
   <script src="http://code.jquery.com/jquery.min.js"></script>
+  <script src="{{ static_url("cookie.js") }}"></script>
   <script>
+
+  function disclaimer(){
+    $("#disclaimer").text(cookies[cookieindex]);
+    cookieindex++;
+    cookieindex%=cookies.length;
+  }
 
   function addTable(list) {
     var table = $('<table></table>').addClass('printtable');
@@ -192,6 +204,14 @@
     $("div#printlist").hide();
     $("#connection").show();
     $('#nickname').hide();
+    nick = getCookie("nick");
+    if (nick != null){
+      $('#nickname').val(nick);
+    }
+    $('#nickname').on("propertychange change keyup paste input", function(evt) {
+      setCookie("nick", $('#nickname').val())
+    });
+    setInterval(disclaimer, 120);
 
     ws = new WebSocket("ws://" + window.location.host + "/ws");
     ws.onmessage = function(evt) {
@@ -248,6 +268,11 @@
     <div id ="printlist">
 
     </div>
+    <div id="foot">
+
+    <pre><code id="disclaimer">
+    </code></pre>
+  </div>
     <div id="terminal">
 
     </div>
