@@ -6,7 +6,7 @@ class Player:
         self._juggler = juggler
         self.instance = vlc.Instance()
         self.mediaplayer = self.instance.media_player_new()
-        self._fallback = self.instance.media_new("http://relay1.slayradio.org:8000/")
+        self._fallback = self.instance.media_new("http://relay3.slayradio.org:8000/")
         self.vlc_events = self.mediaplayer.event_manager()
         self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
         self.play_fallback()

@@ -34,10 +34,8 @@
     -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
     text-align: center;
+  }
 
-  }
-  #disclaimer{
-  }
   #foot{
     padding: 1em;
   }
@@ -45,17 +43,16 @@
   body {
     text-align: center;
     margin: 0px;
-    min-height: 100%;
     width: 100%;
     box-shadow:inset 1px 1px 40px 1px rgba(0,0,0,.45);
     background:#000;
     color:#D0B11B;
     background-size:cover;
     overflow:hidden;
-  }
-
-  #printlist {
-
+    /*Below is footer magic*/
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
   }
 
   #overlay {
@@ -88,6 +85,8 @@
 
   #page_body {
     padding: 2em;
+    /*Footer magic*/
+    flex: 1;
   }
 
   </style>
@@ -103,7 +102,7 @@
     cookieindex%=cookies.length;
   }
 
-  function addTable(list) {
+  function addTable(list, position) {
     var table = $('<table></table>').addClass('printtable');
     var headerRow = $('<tr></tr>');
     var headers = ['File','Progress','User', 'Prio'];
@@ -119,7 +118,6 @@
       var contents = [
         '<a href="'+encodeURI(curr['path'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
         "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
-        // "<progress value='0' id='p"+i+"'><span>0</span>%</progress>",
         curr['nick']+"("+curr['address']+")",
         curr['prio']
       ]
@@ -127,10 +125,14 @@
         var cell = $('<td></td>').html(contents[o]);
         row.append(cell);
       }
-      table.addClass()
       table.append(row);
     }
-    $('#printlist').html(table);
+
+    $('#printlist').html(table).delay(5).promise().done(
+        function() {
+          $("#p0").css({width:position*100+"%"});
+          $('#printlist').fadeTo(400, 1);
+        });
   }
 
   // log function
@@ -221,26 +223,28 @@
         $("#printlist").html(message.filename);
         break;
         case 'list':
-        addTable(message.list);
-        $("#p0").css({width:message.position*100+"%"});
+        $("div#printlist").fadeTo(400, 0).promise().done(
+            function() {
+              addTable(message.list, message.position);
+            });
+
         break;
         case 'progress':
-        // $("#p0").css({width:message.position*100+"%"});
-        $("#p0").animate({width:message.position*100+"%"}, 200);
+        $("#p0").animate({width:message.position*100+"%"}, 100);
         break;
       }
     };
 
     ws.onclose = function(evt) {
-      $("div#printlist").hide();
-      $('#nickname').hide();
-      $("#connection").show();
+      $("div#printlist").fadeOut("slow");
+      $('#nickname').hide("slow");
+      $("#connection").show("slow");
     };
 
     ws.onopen = function(evt) {
-      $("div#printlist").show();
-      $('#nickname').show();
-      $("#connection").hide();
+      $("div#printlist").fadeIn("slow");
+      $('#nickname').show("slow");
+      $("#connection").hide("slow");
     };
 
     $("html").on("dragover", FileDragHover);
@@ -266,16 +270,12 @@
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
     </div>
     <div id ="printlist">
-
     </div>
-    <div id="foot">
-
-    <pre><code id="disclaimer">
-    </code></pre>
-  </div>
     <div id="terminal">
-
     </div>
   </section>
+  <div id="foot">
+    <pre><code id="disclaimer"></code></pre>
+  </div>
 </body>
 </html>
