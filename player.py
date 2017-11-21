@@ -7,6 +7,7 @@ class Player:
         self.instance = vlc.Instance("--no-video")
         self.mediaplayer = self.instance.media_player_new()
         self._fallback = self.instance.media_new("http://relay3.slayradio.org:8000/")
+        self._scratch = self.instance.media_new("scratch.wav")
         self.vlc_events = self.mediaplayer.event_manager()
         self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
         self.play_fallback()
@@ -15,6 +16,10 @@ class Player:
         print("Now playing: "+filename)
         self.media = self.instance.media_new(path)
         self.mediaplayer.set_media(self.media)
+        self.mediaplayer.play()
+
+    def scratch(self):
+        self.mediaplayer.set_media(self._scratch)
         self.mediaplayer.play()
 
     def get_position(self):

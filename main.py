@@ -1,5 +1,6 @@
 import os
 import uuid
+import _thread
 import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
@@ -14,6 +15,13 @@ from mp3Juggler import mp3Juggler
 clients = connections.Connections()
 juggler = mp3Juggler(clients)
 __UPLOADS__ = "static/songs/"
+
+def skipper ():
+    while True:
+        if (input() == "s"):
+            print("Skipping...")
+            juggler.skip()
+
 class IndexHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(request):
@@ -71,6 +79,7 @@ application = tornado.web.Application([
 
 
 if __name__ == "__main__":
+    _thread.start_new_thread(skipper, ())
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(80)
     myIP = socket.gethostbyname(socket.gethostname())

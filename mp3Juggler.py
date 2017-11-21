@@ -18,7 +18,12 @@ class mp3Juggler:
         self._t2.start()
         self.lock = Lock()
 
-
+    def skip(self):
+        self.lock.acquire()
+        try:
+            self._player.scratch()
+        finally:
+            self.lock.release()
 
     def juggle(self, file):
         self.lock.acquire()
@@ -65,14 +70,17 @@ class mp3Juggler:
             self._event.clear()
             self.lock.acquire()
             try:
-                self._counts[self._songlist[0]['address']]-= 1
-                os.remove(self._songlist[0]['path'])
-                del(self._songlist[0])
                 if(not self._songlist):
                     self._player.play_fallback()
                 else:
-                    next = self._songlist[0]
-                    self._player.play(next['filename'], next['path'] )
+                    self._counts[self._songlist[0]['address']]-= 1
+                    os.remove(self._songlist[0]['path'])
+                    del(self._songlist[0])
+                    if(not self._songlist):
+                        self._player.play_fallback()
+                    else:
+                        next = self._songlist[0]
+                        self._player.play(next['filename'], next['path'] )
             finally:
                 self.lock.release()
             self._clients.message_clients(self.get_list())
