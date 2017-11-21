@@ -4,7 +4,7 @@ import vlc
 class Player:
     def __init__(self, juggler):
         self._juggler = juggler
-        self.instance = vlc.Instance()
+        self.instance = vlc.Instance("--no-video")
         self.mediaplayer = self.instance.media_player_new()
         self._fallback = self.instance.media_new("http://relay3.slayradio.org:8000/")
         self.vlc_events = self.mediaplayer.event_manager()

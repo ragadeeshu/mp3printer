@@ -7,6 +7,8 @@ import tornado.web
 import socket
 import json
 import connections
+import youtube_dl
+
 from mp3Juggler import mp3Juggler
 
 clients = connections.Connections()
@@ -20,7 +22,7 @@ class IndexHandler(tornado.web.RequestHandler):
 class Upload(tornado.web.RequestHandler):
     def post(self):
         filename = self.request.headers.get('Filename')
-        extn = os.path.splitext(filename)[1]
+        extn = os.path.splitext(filename)[-1]
         infile = {'nick':self.request.headers.get('nick'),
         'filename':filename,
         'address':self.request.remote_ip,
@@ -36,10 +38,24 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         clients.add_conneciton(self)
         self.write_message(json.dumps(juggler.get_list()))
 
-    # def on_message(self, message):
-        # parsed_json = json.loads(message)
-        # parsed_json['path'] = __UPLOADS__+parsed_json['filename']
-        # juggler.juggle(parsed_json)
+    def on_message(self, message):
+        parsed_json = json.loads(message)
+        ydl_opts = {
+        'quiet': "True",
+        'format': 'bestaudio/best',
+        'outtmpl': __UPLOADS__ + str(uuid.uuid4())+'.%(ext)s'}
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(parsed_json['link'], download=True)
+            video_title = info_dict.get('title', None)
+            path = ydl.prepare_filename(info_dict)
+            extn = os.path.splitext(path)[-1]
+            filename = video_title + extn
+
+        infile = {'nick':parsed_json['nick'],
+        'filename':filename,
+        'address':self.request.remote_ip,
+        'path':path}
+        juggler.juggle(infile)
 
     def on_close(self):
         print('connection closed')

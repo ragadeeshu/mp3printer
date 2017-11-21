@@ -144,6 +144,7 @@
   var unfading = false;
   var child = false;
   var lastcancel = 0;
+
   function FileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -161,6 +162,7 @@
       }, 400);
     }
   }
+
   function ChildFileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -184,7 +186,11 @@
     for (var i = 0, f; f = files[i]; i++) {
       ParseFile(f);
     }
+    if (files.length == 0){
+      ParseLink(e.originalEvent.dataTransfer.getData('Text'));
+    }
   }
+
   function ParseFile(file) {
     if(file.type.startsWith("audio")){
       var req = new XMLHttpRequest();
@@ -201,6 +207,21 @@
       alert("Please, only audio files.");
     }
   }
+
+  function ParseLink(link) {
+    if(link.includes("www.youtube.com")){
+      linkToUpload={
+        "nick":$('#nickname').val(),
+        "link":link
+      };
+      ws.send(JSON.stringify(linkToUpload));
+    }
+    else {
+      alert("Please, only youtube links.");
+    }
+  }
+
+  // begin page load code
   var ws;
   $(document).ready(function () {
     $("div#printlist").hide();
@@ -215,6 +236,7 @@
     });
     setInterval(disclaimer, 120);
 
+    // Websocket stuff
     ws = new WebSocket("ws://" + window.location.host + "/ws");
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
@@ -260,7 +282,7 @@
 <body>
   <div id="overlay" class="child-elements">
     <p>
-      Drop files here to upload!
+      Drop files or youtube links here to upload!
     </p>
   </div>
   <section id = "page_body" class="child-elements">
