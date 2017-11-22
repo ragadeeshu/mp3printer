@@ -93,6 +93,10 @@ class mp3Juggler:
                 position = self._player.get_position();
                 return {'type':'list', 'position':position, 'list':self._songlist}
             else:
-                return {'type':'fallback', 'filename': "Now playing Slay Radio..."}
+                if(self._player._playingDubstep):
+                    message = "Now playing dubstep..."
+                else:
+                    message = "Now playing Slay Radio..."
+                return {'type':'fallback', 'filename': message}
         finally:
             self.lock.release()
