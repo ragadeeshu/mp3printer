@@ -9,7 +9,7 @@ class Player:
         self.instance = vlc.Instance("--no-video")
         self.mediaplayer = self.instance.media_player_new()
         self._fallback = self.instance.media_new("http://relay3.slayradio.org:8000/")
-        self._scratch = self.instance.media_new("scratch.wav")
+        self._scratch = self.instance.media_new("shortscratch.wav")
         self.vlc_events = self.mediaplayer.event_manager()
         self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
         self._playingDubstep=False
@@ -23,8 +23,6 @@ class Player:
         self.play_fallback()
 
     def handleDubstep(self):
-        if (self._playingDubstep):
-            self._dubstepPosition[1]=self.mediaplayer.get_position()
         self._playingDubstep = False
         self._dubstepPosition=[random.randint(0,2),random.random()]
         self._shouldPlayDubstep = not self._shouldPlayDubstep
