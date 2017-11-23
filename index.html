@@ -183,11 +183,16 @@
     unfading = false;
     lastcancel = e.timeStamp;
     var files = e.target.files || e.originalEvent.dataTransfer.files;
-    for (var i = 0, f; f = files[i]; i++) {
-      ParseFile(f);
-    }
     if (files.length == 0){
       ParseLink(e.originalEvent.dataTransfer.getData('Text'));
+    }
+    else if (files.length > 3) {
+      alert("Please, no more than 3 at a time.");
+    }
+    else{
+      for (var i = 0, f; f = files[i]; i++) {
+        ParseFile(f);
+      }
     }
   }
 
