@@ -5,11 +5,13 @@ import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
 import tornado.web
+import asyncio
 import socket
 import json
 import connections
 import youtube_dl
 
+from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 from mp3Juggler import mp3Juggler
 
 clients = connections.Connections()
@@ -79,6 +81,7 @@ application = tornado.web.Application([
 
 
 if __name__ == "__main__":
+    asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
     _thread.start_new_thread(skipper, ())
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(80)
