@@ -3,7 +3,7 @@ import os
 # import connections
 from threading import Thread
 from threading import Event
-from threading import Lock
+from threading import RLock
 import time
 class mp3Juggler:
     def __init__(self, clients):
@@ -16,7 +16,7 @@ class mp3Juggler:
         self._t.start()
         self._t2 = Thread(target=self.time_change, args=())
         self._t2.start()
-        self.lock = Lock()
+        self.lock = RLock()
 
     def skip(self):
         self.lock.acquire()
@@ -41,6 +41,28 @@ class mp3Juggler:
 
             if(len(self._songlist)) == 1:
                 self._player.play(file['filename'], file['path'])
+        finally:
+            self.lock.release()
+        self._clients.message_clients(self.get_list())
+
+    def cancel(self, infile):
+        self.lock.acquire()
+        try:
+            for i, song in reversed(list(enumerate(self._songlist))):
+                print(i)
+                print(song)
+                print(infile)
+                if(song['mrl']==infile['mrl'] and song['address']==infile['address']):
+                    if(i==0):
+                        self.skip()
+                    else:
+                        self._counts[song['address']]-= 1
+                        try:
+                            os.remove(self._songlist[0]['path'])
+                        except:
+                            pass
+                        del(self._songlist[i])
+                    break
         finally:
             self.lock.release()
         self._clients.message_clients(self.get_list())

@@ -52,19 +52,27 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         parsed_json = json.loads(message)
-        ydl_opts = {
-        'quiet': "True",
-        'format': 'bestaudio/best'}
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(parsed_json['link'], download=False)
-            video_title = info_dict.get('title', None)
-            url = info_dict.get("url", None)
-        infile = {'nick':parsed_json['nick'],
-        'filename':video_title,
-        'address':self.request.remote_ip,
-        'mrl':parsed_json['link'],
-        'path':url}
-        juggler.juggle(infile)
+        if parsed_json['type'] == "link":
+            ydl_opts = {
+            'quiet': "True",
+            'format': 'bestaudio/best'}
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(parsed_json['link'], download=False)
+                video_title = info_dict.get('title', None)
+                url = info_dict.get("url", None)
+            infile = {'nick':parsed_json['nick'],
+            'filename':video_title,
+            'address':self.request.remote_ip,
+            'mrl':parsed_json['link'],
+            'path':url}
+            juggler.juggle(infile)
+        else:
+            print(parsed_json)
+            infile = {
+                'address':self.request.remote_ip,
+                'mrl':parsed_json['mrl']
+            }
+            juggler.cancel(infile)
 
     def on_close(self):
         print('connection closed')

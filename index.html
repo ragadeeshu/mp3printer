@@ -115,14 +115,39 @@
     for(i=0; i<list.length; i++){
       var curr = list[i];
       var row = $('<tr></tr>');
+      var prefix = $('<code></code>');
+      if (curr['nick'] == $('#nickname').val() ){
+        prefix.append("[")
+        $('<a>',{
+          text: 'X',
+          mrl: curr['mrl'].toString(),
+          title: 'Cancel song',
+          href: '#',
+          click: function(event) {
+            event.preventDefault();
+            var skipMessage={
+            'type':'skip',
+            'mrl': $(event.target).attr('mrl')
+            };
+            log($(event.target).attr('mrl'));
+            ws.send(JSON.stringify(skipMessage));
+          }
+        }).appendTo(prefix);
+        prefix.append("]")
+
+      }
       var contents = [
-        '<a target="_blank" href="'+encodeURI(curr['mrl'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
+        ' <a target="_blank" href="'+encodeURI(curr['mrl'])+'"download="'+curr['filename']+'">'
+        +curr['filename']+"</a>",
         "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
         curr['nick']+"("+curr['address']+")",
         curr['prio']
       ]
       for(o=0; o<contents.length; o++){
         var cell = $('<td></td>').html(contents[o]);
+        if(o == 0){
+          cell.prepend(prefix);
+        }
         row.append(cell);
       }
       table.append(row);
@@ -216,6 +241,7 @@
   function ParseLink(link) {
     if(link.includes("www.youtube.com")){
       linkToUpload={
+        "type":"link",
         "nick":$('#nickname').val(),
         "link":link
       };
