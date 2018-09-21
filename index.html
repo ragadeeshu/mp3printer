@@ -116,7 +116,7 @@
       var curr = list[i];
       var row = $('<tr></tr>');
       var contents = [
-        '<a href="'+encodeURI(curr['path'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
+        '<a target="_blank" href="'+encodeURI(curr['mrl'])+'"download="'+curr['filename']+'">'+curr['filename']+"</a>",
         "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
         curr['nick']+"("+curr['address']+")",
         curr['prio']

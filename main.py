@@ -33,10 +33,12 @@ class Upload(tornado.web.RequestHandler):
     def post(self):
         filename = self.request.headers.get('Filename')
         extn = os.path.splitext(filename)[-1]
+        cache = __UPLOADS__ + str(uuid.uuid4()) + extn
         infile = {'nick':self.request.headers.get('nick'),
         'filename':filename,
         'address':self.request.remote_ip,
-        'path':__UPLOADS__ + str(uuid.uuid4()) + extn}
+        'path':cache,
+        'mrl':cache}
         fh = open(infile['path'], 'wb')
         fh.write(self.request.body)
         self.finish()
@@ -52,19 +54,16 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         parsed_json = json.loads(message)
         ydl_opts = {
         'quiet': "True",
-        'format': 'bestaudio/best',
-        'outtmpl': __UPLOADS__ + str(uuid.uuid4())+'.%(ext)s'}
+        'format': 'bestaudio/best'}
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(parsed_json['link'], download=True)
+            info_dict = ydl.extract_info(parsed_json['link'], download=False)
             video_title = info_dict.get('title', None)
-            path = ydl.prepare_filename(info_dict)
-            extn = os.path.splitext(path)[-1]
-            filename = video_title + extn
-
+            url = info_dict.get("url", None)
         infile = {'nick':parsed_json['nick'],
-        'filename':filename,
+        'filename':video_title,
         'address':self.request.remote_ip,
-        'path':path}
+        'mrl':parsed_json['link'],
+        'path':url}
         juggler.juggle(infile)
 
     def on_close(self):

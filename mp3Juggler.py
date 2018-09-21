@@ -74,7 +74,10 @@ class mp3Juggler:
                     self._player.play_fallback()
                 else:
                     self._counts[self._songlist[0]['address']]-= 1
-                    os.remove(self._songlist[0]['path'])
+                    try:
+                        os.remove(self._songlist[0]['path'])
+                    except:
+                        pass
                     del(self._songlist[0])
                     if(not self._songlist):
                         self._player.play_fallback()
