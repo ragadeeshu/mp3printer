@@ -30,6 +30,7 @@ class mp3Juggler:
         try:
             file['prio'] = self._counts.get(file['address'], 0)+ 1
             self._counts[file['address']] = self._counts.get(file['address'], 0) + 1
+            file ['prio'] = max( file ['prio'] - 2 , 0 )
             index = 0
             if (len(self._songlist)) > 0:
                 index = 1
