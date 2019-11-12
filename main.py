@@ -25,7 +25,6 @@ def skipper ():
             juggler.skip()
 
 class IndexHandler(tornado.web.RequestHandler):
-    @tornado.web.asynchronous
     def get(request):
         request.render("index.html")
 
@@ -67,7 +66,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             'path':url}
             juggler.juggle(infile)
         else:
-            print(parsed_json)
             infile = {
                 'address':self.request.remote_ip,
                 'mrl':parsed_json['mrl']

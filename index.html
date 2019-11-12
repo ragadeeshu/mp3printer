@@ -129,7 +129,6 @@
             'type':'skip',
             'mrl': $(event.target).attr('mrl')
             };
-            log($(event.target).attr('mrl'));
             ws.send(JSON.stringify(skipMessage));
           }
         }).appendTo(prefix);

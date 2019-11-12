@@ -30,7 +30,7 @@ class mp3Juggler:
         try:
             file['prio'] = self._counts.get(file['address'], 0)+ 1
             self._counts[file['address']] = self._counts.get(file['address'], 0) + 1
-            file ['prio'] = max( file ['prio'] - 2 , 0 )
+            file ['prio'] = max( file ['prio'] - 3 , 0 )
             index = 0
             if (len(self._songlist)) > 0:
                 index = 1
@@ -50,9 +50,6 @@ class mp3Juggler:
         self.lock.acquire()
         try:
             for i, song in reversed(list(enumerate(self._songlist))):
-                print(i)
-                print(song)
-                print(infile)
                 if(song['mrl']==infile['mrl'] and song['address']==infile['address']):
                     if(i==0):
                         self.skip()
