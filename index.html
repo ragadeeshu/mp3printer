@@ -238,17 +238,12 @@
   }
 
   function ParseLink(link) {
-    if(link.includes("www.youtube.com")){
-      linkToUpload={
-        "type":"link",
-        "nick":$('#nickname').val(),
-        "link":link
-      };
-      ws.send(JSON.stringify(linkToUpload));
-    }
-    else {
-      alert("Please, only youtube links.");
-    }
+    linkToUpload={
+      "type":"link",
+      "nick":$('#nickname').val(),
+      "link":link
+    };
+    ws.send(JSON.stringify(linkToUpload));
   }
 
   // begin page load code
