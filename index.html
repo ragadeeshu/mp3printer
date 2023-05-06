@@ -40,12 +40,15 @@
     color: #D01B1B;
   }
 
-  #errors {
-    display: inline-block;
+  #errors p {
+    margin: 0;
   }
 
   #errors div {
+    display: inline-block;
     padding: 0.25em;
+
+    text-align: left;
 
     border: #D01B1B 1px solid;
 
@@ -57,7 +60,7 @@
     -webkit-box-shadow: 0px 0px 3px 0px #D01B1B;
     box-shadow: 0px 0px 3px 0px #D01B1B;
 
-    margin: 0.5em auto;
+    margin: 0.25em 0;
   }
 
   #errors div::before {
@@ -237,11 +240,11 @@
     unfading = false;
     lastcancel = e.timeStamp;
     var files = e.target.files || e.originalEvent.dataTransfer.files;
-    if (files.length == 0){
+    if (files.length == 0) {
       ParseLink(e.originalEvent.dataTransfer.getData('Text'));
     }
     else if (files.length > 3) {
-      alert("Please, no more than 3 at a time.");
+      addError("Please, no more than 3 at a time.");
     }
     else{
       for (var i = 0, f; f = files[i]; i++) {
@@ -264,7 +267,7 @@
       req.send(file);
     }
     else {
-      alert("Please, only audio files.");
+      addError("Please, only audio files.");
     }
   }
 
@@ -278,11 +281,15 @@
   }
 
   function addError(msg) {
+    var line = $('<p>')
+      .prependTo($('#errors'));
     var error = $('<div>')
       .text(msg)
-      .prependTo($('#errors'));
+      .hide()
+      .appendTo(line);
+    error.show('slow');
     setTimeout(function(){
-      error.fadeOut('slow', function() { error.remove(); });
+      line.fadeOut('slow', function() { line.remove(); });
     }, 15000);
   }
 
