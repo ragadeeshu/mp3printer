@@ -12,6 +12,7 @@ class Player:
         self._scratch = self.instance.media_new("shortscratch.wav")
         self.vlc_events = self.mediaplayer.event_manager()
         self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
+        self.vlc_events.event_attach(vlc.EventType.MediaPlayerEncounteredError, juggler.song_finished, 1)
         self._playingDubstep=False
         self._shouldPlayDubstep=False;
         self._dubstepPosition=[random.randint(0,2),random.random()]
