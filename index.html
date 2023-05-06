@@ -239,63 +239,102 @@
     $("#overlay").fadeOut(150);
     unfading = false;
     lastcancel = e.timeStamp;
-    var files = e.target.files || e.originalEvent.dataTransfer.files;
-    if (files.length == 0) {
-      ParseLink(e.originalEvent.dataTransfer.getData('Text'));
-    }
-    else if (files.length > 3) {
-      addError("Please, no more than 3 at a time.");
-    }
-    else {
-      var sawNull = false;
+    var dt = e.originalEvent.dataTransfer;
+    if (dt.items) {
+      var items = dt.items;
+      if (items.length < 1) {
+        addError("You seem to have dragged nothing, please try again.");
+      }
+      var uploads = [];
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.kind == 'file') {
+          var file = item.getAsFile();
+          if (file.size > 0) {
+            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+              uploads.push({ 'type': 'file', 'file': file });
+            } else {
+              addError("Please, only audio files.");
+              return false;
+            }
+          }
+        } else if (item.kind == 'string' && item.type == 'text/plain') {
+          var lines = dt.getData('text/plain').split('\n');
+          var re_host = location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+          var host_match = new RegExp('^https?://' + re_host);
+          for (var l = 0; l < lines.length; l++) {
+            var link = lines[l]
+            if (!link.match(host_match)) {
+              if(link.startsWith('http://') || link.startsWith('https://')) {
+                uploads.push({ 'type': 'link', 'link': link });
+              } else {
+                addError("Please, only web links.");
+                return false;
+              }
+            }
+          }
+        }
+      }
+      if (uploads.length > 10) {
+        addError("Please, no more than 10 tracks at a time.");
+        return false;
+      }
+      var sawErr = false;
       var last_id = null;
-      for (var i = 0, f; f = files[i]; i++) {
-        var id = ParseFile(f, last_id);
-        if (id) {
-          last_id = id;
-        }
-        else {
-          sawNull = true;
+      for (var i = 0; i < uploads.length; i++) {
+        var upload = uploads[i];
+        switch(upload.type) {
+        case 'file':
+          last_id = SendFile(upload.file, last_id);
+          break;
+        case 'link':
+          last_id = SendLink(upload.link, last_id);
+          break;
         }
       }
-      if (sawNull) {
-        addError("Please, only audio files.");
-      }
-    }
-  }
-
-  function ParseFile(file, parent_id) {
-    if(file.type.startsWith('audio/') || file.type.startsWith('video/')){
-      var nick = $('#nickname').val();
-      var id = nick + ':' + file.name + ':' + ((new Date()).getTime() + Math.random());
-      var req = new XMLHttpRequest();
-      req.onreadystatechange = function (aEvt) {
-        if (req.readyState == 4 && req.status != 200) {
-          addError(req.responseText);
-        }
-      };
-      req.open('post', 'upload', true)
-      req.setRequestHeader("Filename", file.name);
-      req.setRequestHeader("Nick", nick);
-      req.setRequestHeader("Upload-Id", id);
-      if (parent_id) {
-        req.setRequestHeader("Parent-Id", parent_id);
-      }
-      req.send(file);
-      return id;
     }
     else {
-      return null;
+      addError("Please upgrade your browser...");
     }
   }
 
-  function ParseLink(link) {
-    linkToUpload={
+  function UploadId(nick, name) {
+    return nick + ':' + name + ':' + ((new Date()).getTime() + Math.random());
+  }
+
+  function SendFile(file, parent_id) {
+    var nick = $('#nickname').val();
+    var id = UploadId(nick, file.name);
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = function (aEvt) {
+      if (req.readyState == 4 && req.status != 200) {
+        addError(req.responseText);
+      }
+    };
+    req.open('post', 'upload', true)
+    req.setRequestHeader("Filename", file.name);
+    req.setRequestHeader("Nick", nick);
+    req.setRequestHeader("Upload-Id", id);
+    if (parent_id) {
+      req.setRequestHeader("Parent-Id", parent_id);
+    }
+    req.send(file);
+    return id;
+  }
+
+  function SendLink(link, parent_id) {
+    var id = UploadId(nick, link);
+    var linkToUpload = {
       "type": "link",
+      "id": id,
       "nick": $('#nickname').val(),
       "link": link
     };
+    if (parent_id) {
+      linkToUpload.parent = parent_id;
+    }
     ws.send(JSON.stringify(linkToUpload));
+    return id;
   }
 
   function addError(msg) {
