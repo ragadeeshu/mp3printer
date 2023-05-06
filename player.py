@@ -17,9 +17,9 @@ class Player:
         self._shouldPlayDubstep=False;
         self._dubstepPosition=[random.randint(0,2),random.random()]
         self._dubstep = [
-        "https://www.youtube.com/watch?v=dLyH94jNau0",
-        "https://www.youtube.com/watch?v=RRucF7ffPRE",
-        "https://www.youtube.com/watch?v=nXaMKZApYDM"
+            "https://www.youtube.com/watch?v=dLyH94jNau0",
+            "https://www.youtube.com/watch?v=RRucF7ffPRE",
+            "https://www.youtube.com/watch?v=nXaMKZApYDM"
         ]
         self.play_fallback()
 

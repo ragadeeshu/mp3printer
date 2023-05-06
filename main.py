@@ -1,6 +1,5 @@
 import os
 import re
-import uuid
 import signal
 import tempfile
 import threading
@@ -13,6 +12,7 @@ import socket
 import json
 import connections
 import yt_dlp
+import urllib.parse
 
 from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 from mp3Juggler import mp3Juggler
@@ -24,18 +24,18 @@ def error_message(err):
     return error_prefix.sub('', ansi_escape.sub('', str(err)))
 
 class IndexHandler(tornado.web.RequestHandler):
-    def get(request):
-        request.render("index.html")
+    def get(self):
+        self.render("index.html")
 
 class Upload(tornado.web.RequestHandler):
-
     def post(self):
         try:
             filename = self.request.headers.get('Filename')
             extn = os.path.splitext(filename)[-1]
             fd, cachename = tempfile.mkstemp(suffix=extn)
             infile = {
-                'id': self.request.headers.get('Upload-Id'),
+                'type': 'file',
+                'upload_id': self.request.headers.get('Upload-Id'),
                 'nick': self.request.headers.get('Nick'),
                 'filename': filename,
                 'address': self.request.remote_ip,
@@ -52,6 +52,34 @@ class Upload(tornado.web.RequestHandler):
             self.set_status(500)
             self.finish(error_message(err))
 
+class Download(tornado.web.RequestHandler):
+    def get(self):
+        try:
+            infile = juggler.download(self.get_argument('id'))
+            if infile is None:
+                self.set_status(404)
+                self.finish("Not found")
+                return
+            if infile['type'] == 'file':
+                url_name = urllib.parse.quote(infile['filename'])
+                self.add_header('Content-Disposition',
+                    'attachment; filename="'+url_name+"'")
+                with open(infile['mrl'], 'rb') as f:
+                    chunk = f.read(1048576)
+                    while chunk:
+                        self.write(chunk)
+                        chunk = f.read(1048576)
+                self.finish()
+            elif infile['type'] == 'link':
+                self.redirect(infile['mrl'])
+            else:
+                raise 'Unknown type: '+infile['type']
+        except Exception as err:
+            print(err)
+            self.clear()
+            self.set_status(500)
+            self.finish(error_message(err))
+
 class WSHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
@@ -63,28 +91,35 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             parsed_json = json.loads(message)
             if parsed_json['type'] == "link":
                 ydl_opts = {
-                'quiet': "True",
-                'format': 'bestaudio/best'}
+                    'quiet': "True",
+                    'format': 'bestaudio/best'
+                }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info_dict = ydl.extract_info(parsed_json['link'], download=False)
                     video_title = info_dict.get('title', None)
                     url = info_dict.get("url", None)
                 infile = {
-                    'nick':parsed_json['nick'],
-                    'filename':video_title,
-                    'address':self.request.remote_ip,
-                    'mrl':parsed_json['link'],
-                    'path':url
+                    'type': 'link',
+                    'upload_id': parsed_json['id'],
+                    'nick': parsed_json['nick'],
+                    'filename': video_title,
+                    'address': self.request.remote_ip,
+                    'mrl': parsed_json['link'],
+                    'path': url
                 }
-                juggle_args = (infile, None)
+                parent = parsed_json['parent'] if 'parent' in parsed_json else None
+                juggle_args = (infile, parent)
                 threading.Thread(target=juggler.juggle, args=juggle_args).start()
-            else:
+            elif parsed_json['type'] == "skip":
                 infile = {
-                    'address':self.request.remote_ip,
-                    'mrl':parsed_json['mrl']
+                    'address': self.request.remote_ip,
+                    'id': parsed_json['id']
                 }
                 juggler.cancel(infile)
+            else:
+                raise 'Unknown command: '+parsed_json['type']
         except Exception as err:
+            print(err)
             self.write_message(json.dumps({
                 'type': 'error',
                 'message': error_message(err)
@@ -95,14 +130,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         print('connection closed')
         clients.close_connection(self)
 
-settings = {
-    "static_path": os.path.join(os.path.dirname(__file__), "static"),
-}
-
-application = tornado.web.Application([
-    (r'/ws', WSHandler), (r'/', IndexHandler), (r"/upload", Upload),
-], **settings)
-
 
 if __name__ == "__main__":
     loop = tornado.ioloop.IOLoop.current()
@@ -110,6 +137,13 @@ if __name__ == "__main__":
 
     clients = connections.Connections(loop)
     juggler = mp3Juggler(clients)
+
+    application = tornado.web.Application([
+        (r'/ws', WSHandler),
+        (r'/', IndexHandler),
+        (r"/upload", Upload),
+        (r"/download", Download),
+    ], static_path=os.path.join(os.path.dirname(__file__), "static"))
 
     http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
     http_server.listen(80)

@@ -147,49 +147,59 @@
 
     for(i=0; i<list.length; i++){
       var curr = list[i];
-      var row = $('<tr></tr>');
-      var prefix = $('<code></code>');
+      var row = $('<tr></tr>')
+        .appendTo(table);
+      var nameCell = $('<td></td>')
+        .appendTo(row);
       if (curr['nick'] == $('#nickname').val() ){
+        var prefix = $('<code></code>');
         prefix.append("[")
-        $('<a>',{
+        prefix.append($('<a></a>', {
           text: 'X',
-          mrl: curr['mrl'].toString(),
           title: 'Cancel song',
           href: '#',
+          data: { id: curr['id'] },
           click: function(event) {
             event.preventDefault();
             var skipMessage={
-            'type': 'skip',
-            'mrl': $(event.target).attr('mrl')
+              'type': 'skip',
+              'id': $(event.target).data('id')
             };
             ws.send(JSON.stringify(skipMessage));
           }
-        }).appendTo(prefix);
+        }));
         prefix.append("]")
+        nameCell.append(prefix)
+      }
+      nameCell.append($('<a></a>', {
+        target: '_blank',
+        href: 'download?id='+encodeURIComponent(curr['id']),
+        text: curr['filename']
+      }));
 
+      var meterCell = $('<td></td>')
+        .appendTo(row);
+      var meter = $('<div></div>', { class: 'meter' })
+        .appendTo(meterCell);
+      if (i == 0) {
+        meter.append($('<span></span>', {
+          id: 'progress',
+          css: { width: (position*100)+'%'}
+        }));
       }
-      var contents = [
-        ' <a target="_blank" href="'+encodeURI(curr['mrl'])+'"download="'+curr['filename']+'">'
-        +curr['filename']+"</a>",
-        "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
-        curr['nick']+"("+curr['address']+")",
-        curr['prio']
-      ]
-      for(o=0; o<contents.length; o++){
-        var cell = $('<td></td>').html(contents[o]);
-        if(o == 0){
-          cell.prepend(prefix);
-        }
-        row.append(cell);
-      }
-      table.append(row);
+
+      row.append($('<td></td>', {
+        text: curr['nick']+"("+curr['address']+")"
+      }));
+
+      row.append($('<td></td>', {
+        text: curr['prio']
+      }));
     }
 
-    $('#printlist').html(table).delay(5).promise().done(
-        function() {
-          $("#p0").css({width: position*100+"%"});
-          $('#printlist').fadeTo(400, 1);
-        });
+    $('#printlist').html(table).delay(1).promise().done(function() {
+      $('#printlist').fadeTo(400, 1);
+    });
   }
 
   // log function
@@ -338,9 +348,9 @@
   }
 
   function addError(msg) {
-    var line = $('<p>')
+    var line = $('<p></p>')
       .prependTo($('#errors'));
-    var error = $('<div>')
+    var error = $('<div></div>')
       .text(msg)
       .hide()
       .appendTo(line);
@@ -381,7 +391,7 @@
 
         break;
       case 'progress':
-        $("#p0").animate({width: message.position*100+"%"}, 100);
+        $("#progress").animate({width: message.position*100+"%"}, 100);
         break;
       case 'error':
         addError(message.message);

@@ -6,6 +6,8 @@ from threading import Event
 from threading import RLock
 from threading import Condition
 import time
+import uuid
+
 class mp3Juggler:
     def __init__(self, clients):
         self._player = player.Player(self);
@@ -48,7 +50,7 @@ class mp3Juggler:
         try:
             if parent_id is not None:
                 for i, song in reversed(list(enumerate(self._songlist))):
-                    if 'id' in song and song['id'] == parent_id:
+                    if 'upload_id' in song and song['upload_id'] == parent_id:
                         break
                 else:  # Not found
                     remove = True
@@ -77,29 +79,46 @@ class mp3Juggler:
                     if(item['prio']>infile['prio']):
                         break
                     index+= 1
+            infile['id'] = str(uuid.uuid4())
             self._songlist.insert(index, infile)
 
             if len(self._songlist) == 1:
                 self._player.play(infile['filename'], infile['path'])
 
-            if 'id' in infile and infile['id'] in self._waiting:
-                wait = self._waiting[infile['id']]
+            if 'upload_id' in infile and infile['upload_id'] in self._waiting:
+                wait = self._waiting[infile['upload_id']]
                 wait[1] = True
                 wait[0].notify_all()
-                del(self._waiting[infile['id']])
+                del(self._waiting[infile['upload_id']])
         finally:
             self.lock.release()
         self._clients.message_clients(self.get_list())
 
+    def download(self, track_id):
+        self.lock.acquire()
+        try:
+            for song in self._songlist:
+                if song['id'] == track_id:
+                    return {
+                        'type': song['type'],
+                        'filename': song['filename'],
+                        'mrl': song['mrl']
+                    }
+            else:  # Not found
+                return None
+        finally:
+            self.lock.release()
+
     def cancel(self, infile):
         self.lock.acquire()
         try:
-            for i, song in reversed(list(enumerate(self._songlist))):
-                if(song['mrl']==infile['mrl'] and song['address']==infile['address']):
+            for i, song in list(enumerate(self._songlist)):
+                if(song['id']==infile['id'] and song['address']==infile['address']):
                     if(i==0):
                         self.skip()
                     else:
                         self._remove_song(i, song)
+                    break
         finally:
             self.lock.release()
         self._clients.message_clients(self.get_list())
@@ -158,18 +177,30 @@ class mp3Juggler:
                 self.lock.release()
             self._clients.message_clients(self.get_list())
 
+    def _sanitize_item(self, item):
+        return {
+            'id': item['id'],
+            'filename': item['filename'],
+            'nick': item['nick'],
+            'address': item['address'],
+            'prio': item['prio']
+        }
 
     def get_list(self):
         self.lock.acquire()
         try:
             if(self._songlist):
                 position = self._player.get_position();
-                return {'type':'list', 'position':position, 'list':self._songlist}
+                return {
+                    'type': 'list',
+                    'position': position,
+                    'list': list(map(self._sanitize_item, self._songlist))
+                }
             else:
                 if(self._player._playingDubstep):
                     message = "Now playing dubstep..."
                 else:
                     message = "Now playing Slay Radio..."
-                return {'type':'fallback', 'filename': message}
+                return { 'type': 'fallback', 'filename': message}
         finally:
             self.lock.release()
