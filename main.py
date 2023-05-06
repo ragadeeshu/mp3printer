@@ -1,6 +1,7 @@
 import os
 import uuid
 import _thread
+import tempfile
 import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
@@ -16,7 +17,6 @@ from mp3Juggler import mp3Juggler
 
 clients = connections.Connections()
 juggler = mp3Juggler(clients)
-__UPLOADS__ = "static/songs/"
 
 def skipper ():
     while True:
@@ -32,14 +32,14 @@ class Upload(tornado.web.RequestHandler):
     def post(self):
         filename = self.request.headers.get('Filename')
         extn = os.path.splitext(filename)[-1]
-        cache = __UPLOADS__ + str(uuid.uuid4()) + extn
+        fd, cachename = tempfile.mkstemp(suffix=extn)
         infile = {'nick':self.request.headers.get('nick'),
         'filename':filename,
         'address':self.request.remote_ip,
-        'path':cache,
-        'mrl':cache}
-        fh = open(infile['path'], 'wb')
-        fh.write(self.request.body)
+        'path':cachename,
+        'mrl':cachename}
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(self.request.body)
         self.finish()
         juggler.juggle(infile)
 
