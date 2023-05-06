@@ -29,20 +29,27 @@ class IndexHandler(tornado.web.RequestHandler):
         request.render("index.html")
 
 class Upload(tornado.web.RequestHandler):
+    def juggle_thread(self, infile, parent_id):
+        juggler.juggle(infile, parent_id)
+
     def post(self):
         try:
             filename = self.request.headers.get('Filename')
             extn = os.path.splitext(filename)[-1]
             fd, cachename = tempfile.mkstemp(suffix=extn)
-            infile = {'nick':self.request.headers.get('nick'),
-            'filename':filename,
-            'address':self.request.remote_ip,
-            'path':cachename,
-            'mrl':cachename}
+            infile = {
+                'id': self.request.headers.get('Upload-Id'),
+                'nick': self.request.headers.get('Nick'),
+                'filename': filename,
+                'address': self.request.remote_ip,
+                'path': cachename,
+                'mrl': cachename
+            }
             with os.fdopen(fd, 'wb') as fh:
                 fh.write(self.request.body)
+            juggle_args = (infile, self.request.headers.get('Parent-Id'))
+            threading.Thread(target=self.juggle_thread, args=juggle_args).start()
             self.finish()
-            juggler.juggle(infile)
         except Exception as err:
             self.clear()
             self.set_status(500)

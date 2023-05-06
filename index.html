@@ -246,15 +246,28 @@
     else if (files.length > 3) {
       addError("Please, no more than 3 at a time.");
     }
-    else{
+    else {
+      var sawNull = false;
+      var last_id = null;
       for (var i = 0, f; f = files[i]; i++) {
-        ParseFile(f);
+        var id = ParseFile(f, last_id);
+        if (id) {
+          last_id = id;
+        }
+        else {
+          sawNull = true;
+        }
+      }
+      if (sawNull) {
+        addError("Please, only audio files.");
       }
     }
   }
 
-  function ParseFile(file) {
+  function ParseFile(file, parent_id) {
     if(file.type.startsWith("audio")){
+      var nick = $('#nickname').val();
+      var id = nick + ':' + file.name + ':' + ((new Date()).getTime() + Math.random());
       var req = new XMLHttpRequest();
       req.onreadystatechange = function (aEvt) {
         if (req.readyState == 4 && req.status != 200) {
@@ -262,12 +275,17 @@
         }
       };
       req.open('post', 'upload', true)
-      req.setRequestHeader("filename", file.name);
-      req.setRequestHeader("nick", $('#nickname').val() );
+      req.setRequestHeader("Filename", file.name);
+      req.setRequestHeader("Nick", nick);
+      req.setRequestHeader("Upload-Id", id);
+      if (parent_id) {
+        req.setRequestHeader("Parent-Id", parent_id);
+      }
       req.send(file);
+      return id;
     }
     else {
-      addError("Please, only audio files.");
+      return null;
     }
   }
 
