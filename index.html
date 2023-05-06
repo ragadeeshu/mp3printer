@@ -11,29 +11,58 @@
   .child-elements {
     pointer-events: none;
   }
-  a{
+  a {
     pointer-events: auto;
   }
-  #nickname{
+  #nickname {
     pointer-events: auto;
 
-    font-family:Arial, Helvetica, sans-serif;
-    color:#D0B11B;
-    font-size:12px;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #D0B11B;
+    font-size: 12px;
     text-shadow: 1px 1px 0px #5a4d0c;
-    background:#222;
-    border:#D0B11B 1px solid;
+    background: #222;
+    border: #D0B11B 1px solid;
 
     margin-bottom: 2em;
 
-    -moz-border-radius:3px;
-    -webkit-border-radius:3px;
-    border-radius:3px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
 
     -moz-box-shadow: 0px 0px 3px 0px #D0B11B;
     -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
     text-align: center;
+  }
+
+  #connection_details {
+    color: #D01B1B;
+  }
+
+  #errors {
+    display: inline-block;
+  }
+
+  #errors div {
+    padding: 0.25em;
+
+    border: #D01B1B 1px solid;
+
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+
+    -moz-box-shadow: 0px 0px 3px 0px #D01B1B;
+    -webkit-box-shadow: 0px 0px 3px 0px #D01B1B;
+    box-shadow: 0px 0px 3px 0px #D01B1B;
+
+    margin: 0.5em auto;
+  }
+
+  #errors div::before {
+    content: 'Error: ';
+    font-weight: bold;
   }
 
   #foot{
@@ -44,11 +73,11 @@
     text-align: center;
     margin: 0px;
     width: 100%;
-    box-shadow:inset 1px 1px 40px 1px rgba(0,0,0,.45);
-    background:#000;
-    color:#D0B11B;
-    background-size:cover;
-    overflow:hidden;
+    box-shadow: inset 1px 1px 40px 1px rgba(0,0,0,.45);
+    background: #000;
+    color: #D0B11B;
+    background-size: cover;
+    overflow: hidden;
     /*Below is footer magic*/
     display: flex;
     min-height: 100vh;
@@ -65,8 +94,8 @@
     display: none;
     content: "";
     position: fixed;
-    background:rgba(0,0,0,.75);
-    text-align:center;
+    background: rgba(0,0,0,.75);
+    text-align: center;
     font-weight: bold;
     text-align: center;
     color: #D0B11B;
@@ -89,12 +118,13 @@
     flex: 1;
   }
 
+
   </style>
   <link rel="stylesheet" type="text/css" href="{{ static_url("table.css") }}">
   <link rel="stylesheet" type="text/css" href="{{ static_url("progress.css") }}">
   <script src="http://code.jquery.com/jquery.min.js"></script>
   <script src="{{ static_url("cookie.js") }}"></script>
-  <script>
+  <script type="text/javascript">
 
   function disclaimer(){
     $("#disclaimer").text(cookies[cookieindex]);
@@ -126,7 +156,7 @@
           click: function(event) {
             event.preventDefault();
             var skipMessage={
-            'type':'skip',
+            'type': 'skip',
             'mrl': $(event.target).attr('mrl')
             };
             ws.send(JSON.stringify(skipMessage));
@@ -154,7 +184,7 @@
 
     $('#printlist').html(table).delay(5).promise().done(
         function() {
-          $("#p0").css({width:position*100+"%"});
+          $("#p0").css({width: position*100+"%"});
           $('#printlist').fadeTo(400, 1);
         });
   }
@@ -224,7 +254,8 @@
     if(file.type.startsWith("audio")){
       var req = new XMLHttpRequest();
       req.onreadystatechange = function (aEvt) {
-        if (req.readyState == 4 && req.status == 200) {
+        if (req.readyState == 4 && req.status != 200) {
+          addError(req.responseText);
         }
       };
       req.open('post', 'upload', true)
@@ -239,11 +270,20 @@
 
   function ParseLink(link) {
     linkToUpload={
-      "type":"link",
-      "nick":$('#nickname').val(),
-      "link":link
+      "type": "link",
+      "nick": $('#nickname').val(),
+      "link": link
     };
     ws.send(JSON.stringify(linkToUpload));
+  }
+
+  function addError(msg) {
+    var error = $('<div>')
+      .text(msg)
+      .prependTo($('#errors'));
+    setTimeout(function(){
+      error.fadeOut('slow', function() { error.remove(); });
+    }, 15000);
   }
 
   // begin page load code
@@ -266,18 +306,21 @@
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
-        case 'fallback':
+      case 'fallback':
         $("#printlist").html(message.filename);
         break;
-        case 'list':
+      case 'list':
         $("div#printlist").fadeTo(400, 0).promise().done(
             function() {
               addTable(message.list, message.position);
             });
 
         break;
-        case 'progress':
-        $("#p0").animate({width:message.position*100+"%"}, 100);
+      case 'progress':
+        $("#p0").animate({width: message.position*100+"%"}, 100);
+        break;
+      case 'error':
+        addError(message.message);
         break;
       }
     };
@@ -315,6 +358,7 @@
     <input id="nickname" type ="text" placeholder="Name goes here...">
     <div id="connection_details">
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
+      <div id="errors"></div>
     </div>
     <div id ="printlist">
     </div>
