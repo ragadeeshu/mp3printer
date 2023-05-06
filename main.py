@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
 
-    http_server = tornado.httpserver.HTTPServer(application)
+    http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
     http_server.listen(80)
     myIP = socket.gethostbyname(socket.gethostname())
     print('*** Websocket Server Started at %s***' % myIP)
