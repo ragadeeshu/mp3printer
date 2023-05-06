@@ -12,11 +12,27 @@ class mp3Juggler:
         self._songlist = []
         self._counts = {}
         self._event = Event()
+        self._running = True
         self._t = Thread(target=self.play_next, args=())
         self._t.start()
         self._t2 = Thread(target=self.time_change, args=())
         self._t2.start()
         self.lock = RLock()
+
+    def _remove_song(self, i, song = None):
+        if song is None:
+            song = self._songlist[i]
+        self._counts[song['address']]-= 1
+        try:
+            os.remove(song['path'])
+        except:
+            pass
+        del(self._songlist[i])
+
+    def stop(self):
+        self._running = False
+        self._event.set()
+        self.clear()
 
     def skip(self):
         self.lock.acquire()
@@ -54,23 +70,27 @@ class mp3Juggler:
                     if(i==0):
                         self.skip()
                     else:
-                        self._counts[song['address']]-= 1
-                        try:
-                            os.remove(self._songlist[0]['path'])
-                        except:
-                            pass
-                        del(self._songlist[i])
-                    break
+                        self._remove_song(i, song)
         finally:
             self.lock.release()
         self._clients.message_clients(self.get_list())
 
+    def clear(self):
+        self.lock.acquire()
+        try:
+            for i, song in reversed(list(enumerate(self._songlist))):
+                if(i==0):
+                    self.skip()
+                self._remove_song(i, song)
+        finally:
+            self.lock.release()
+        self._clients.message_clients(self.get_list())
 
     def song_finished(self, event, player):
         self._event.set()
 
     def time_change(self):
-        while True:
+        while self._running:
             time.sleep(1)
             self.send_progress()
 
@@ -85,25 +105,22 @@ class mp3Juggler:
 
 
     def play_next(self):
-        while True:
+        while self._running:
             self._event.wait()
             self._event.clear()
+            if not self._running:
+                break
             self.lock.acquire()
             try:
                 if(not self._songlist):
                     self._player.play_fallback()
                 else:
-                    self._counts[self._songlist[0]['address']]-= 1
-                    try:
-                        os.remove(self._songlist[0]['path'])
-                    except:
-                        pass
-                    del(self._songlist[0])
+                    self._remove_song(0)
                     if(not self._songlist):
                         self._player.play_fallback()
                     else:
-                        next = self._songlist[0]
-                        self._player.play(next['filename'], next['path'] )
+                        nxt = self._songlist[0]
+                        self._player.play(nxt['filename'], nxt['path'] )
             finally:
                 self.lock.release()
             self._clients.message_clients(self.get_list())

@@ -1,8 +1,9 @@
 import os
 import re
 import uuid
-import _thread
+import signal
 import tempfile
+import threading
 import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
@@ -16,17 +17,8 @@ import yt_dlp
 from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 from mp3Juggler import mp3Juggler
 
-clients = connections.Connections()
-juggler = mp3Juggler(clients)
-
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
 error_prefix = re.compile(r'^[Ee][Rr][Rr]([Oo][Rr])?:\s*')
-
-def skipper ():
-    while True:
-        if (input() == "s"):
-            print("Skipping...")
-            juggler.skip()
 
 def error_message(err):
     return error_prefix.sub('', ansi_escape.sub('', str(err)))
@@ -106,10 +98,35 @@ application = tornado.web.Application([
 
 
 if __name__ == "__main__":
+    clients = connections.Connections()
+    juggler = mp3Juggler(clients)
+
     asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
-    _thread.start_new_thread(skipper, ())
+
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(80)
     myIP = socket.gethostbyname(socket.gethostname())
     print('*** Websocket Server Started at %s***' % myIP)
-    tornado.ioloop.IOLoop.instance().start()
+
+    loop = tornado.ioloop.IOLoop.current()
+    threading.Thread(target=loop.start).start()
+
+    def signal_handler(sig, frame):
+        print("\nSignal caught, exiting...")
+        loop.add_callback_from_signal(lambda: loop.stop())
+        http_server.stop()
+        juggler.stop()
+        exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # Start console
+    while True:
+        inp = input()
+        if (inp == "s"):
+            print("Skipping...")
+            juggler.skip()
+        elif (inp == "c"):
+            print("Clearing...")
+            juggler.clear()
