@@ -9,7 +9,7 @@ import asyncio
 import socket
 import json
 import connections
-import youtube_dl
+import yt_dlp
 
 from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 from mp3Juggler import mp3Juggler
@@ -55,7 +55,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             ydl_opts = {
             'quiet': "True",
             'format': 'bestaudio/best'}
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(parsed_json['link'], download=False)
                 video_title = info_dict.get('title', None)
                 url = info_dict.get("url", None)

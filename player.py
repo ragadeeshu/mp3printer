@@ -1,7 +1,7 @@
 import mp3Juggler
 import vlc
 import random
-import youtube_dl
+import yt_dlp
 
 class Player:
     def __init__(self, juggler):
@@ -52,7 +52,7 @@ class Player:
             ydl_opts = {
             'quiet': "True",
             'format': 'bestaudio/best'}
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(self._dubstep[self._dubstepPosition[0]], download=False)
                 url = info_dict.get("url", None)
             self.media = self.instance.media_new(url)
