@@ -265,7 +265,7 @@
   }
 
   function ParseFile(file, parent_id) {
-    if(file.type.startsWith("audio")){
+    if(file.type.startsWith('audio/') || file.type.startsWith('video/')){
       var nick = $('#nickname').val();
       var id = nick + ':' + file.name + ':' + ((new Date()).getTime() + Math.random());
       var req = new XMLHttpRequest();
