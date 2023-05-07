@@ -4,21 +4,16 @@ import time
 import uuid
 
 # local libs
-import player
+from player import Player
 
 class mp3Juggler:
     def __init__(self, clients):
-        self._player = player.Player(self);
         self._clients = clients
         self._songlist = []
         self._counts = {}
         self._event = Event()
         self._waiting = {}
-        self._running = True
-        self._t = Thread(target=self.play_next, args=())
-        self._t.start()
-        self._t2 = Thread(target=self.time_change, args=())
-        self._t2.start()
+        self._running = False
         self.lock = RLock()
 
     def _remove_song(self, i, song = None):
@@ -31,10 +26,23 @@ class mp3Juggler:
             pass
         del(self._songlist[i])
 
+    def start(self):
+        if not self._running:
+            self._running = True
+            self._player = Player(self);
+            self._next_thread = Thread(target=self.play_next, args=())
+            self._next_thread.start()
+            self._progress_thread = Thread(target=self.time_change, args=())
+            self._progress_thread.start()
+
     def stop(self):
-        self._running = False
-        self._event.set()
-        self.clear()
+        if self._running:
+            self._running = False
+            self._event.set()
+            self.clear()
+            self._next_thread.join()
+            self._progress_thread.join()
+            self._player.release()
 
     def skip(self):
         self.lock.acquire()
@@ -44,6 +52,12 @@ class mp3Juggler:
             self.lock.release()
 
     def juggle(self, infile, parent_id = None):
+        if not self._running:
+            raise Exception('Queue is not running')
+
+        Thread(target=self._juggle, args=(infile, parent_id)).start()
+
+    def _juggle(self, infile, parent_id):
         self.lock.acquire()
         try:
             if parent_id is not None:

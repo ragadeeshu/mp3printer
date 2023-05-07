@@ -10,6 +10,7 @@ import tornado.web
 import socket
 import json
 import yt_dlp
+import argparse
 import urllib.parse
 
 # local libs
@@ -21,6 +22,12 @@ error_prefix = re.compile(r'^[Ee][Rr][Rr]([Oo][Rr])?:\s*')
 
 def error_message(err):
     return error_prefix.sub('', ansi_escape.sub('', str(err)))
+
+def actual_remote_ip(request):
+    return request.remote_ip
+def forwarded_remote_ip(request):
+    return request.headers.get('X-Forwarded-For')
+remote_ip = actual_remote_ip
 
 class IndexHandler(tornado.web.RequestHandler):
     def get(self):
@@ -37,14 +44,13 @@ class Upload(tornado.web.RequestHandler):
                 'upload_id': self.request.headers.get('Upload-Id'),
                 'nick': self.request.headers.get('Nick'),
                 'filename': filename,
-                'address': self.request.remote_ip,
+                'address': remote_ip(self.request),
                 'path': cachename,
                 'mrl': cachename
             }
             with os.fdopen(fd, 'wb') as fh:
                 fh.write(self.request.body)
-            juggle_args = (infile, self.request.headers.get('Parent-Id'))
-            threading.Thread(target=juggler.juggle, args=juggle_args).start()
+            juggler.juggle(infile, self.request.headers.get('Parent-Id'))
             self.finish()
         except Exception as err:
             self.clear()
@@ -72,7 +78,7 @@ class Download(tornado.web.RequestHandler):
             elif infile['type'] == 'link':
                 self.redirect(infile['mrl'])
             else:
-                raise 'Unknown type: '+infile['type']
+                raise Exception('Unknown type: '+infile['type'])
         except Exception as err:
             print(err)
             self.clear()
@@ -85,7 +91,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         clients.add_connection(self)
         self.write_message(json.dumps({
             'type': 'address',
-            'address': self.request.remote_ip
+            'address': remote_ip(self.request)
         }))
         self.write_message(json.dumps(juggler.get_list()))
 
@@ -106,21 +112,20 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                     'upload_id': parsed_json['id'],
                     'nick': parsed_json['nick'],
                     'filename': video_title,
-                    'address': self.request.remote_ip,
+                    'address': remote_ip(self.request),
                     'mrl': parsed_json['link'],
                     'path': url
                 }
                 parent = parsed_json['parent'] if 'parent' in parsed_json else None
-                juggle_args = (infile, parent)
-                threading.Thread(target=juggler.juggle, args=juggle_args).start()
+                juggler.juggle(infile, parent)
             elif parsed_json['type'] == "skip":
                 infile = {
-                    'address': self.request.remote_ip,
+                    'address': remote_ip(self.request),
                     'id': parsed_json['id']
                 }
                 juggler.cancel(infile)
             else:
-                raise 'Unknown command: '+parsed_json['type']
+                raise Exception('Unknown command: '+parsed_json['type'])
         except Exception as err:
             print(err)
             self.write_message(json.dumps({
@@ -135,8 +140,32 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Musical democracy'
+    )
+    parser.add_argument(
+        '--proxied',
+        action='store_true',
+        help='Use X-Forwarded-For header instead of actual client IP to identify clients.'
+    )
+    parser.add_argument(
+        '-b', '--bind',
+        type=str,
+        help='IP to run HTTP server on (default: any IP)',
+        default=None
+    )
+    parser.add_argument(
+        'port',
+        type=int,
+        nargs='?',
+        help='Port number to run HTTP server on (default 80)',
+        default=80
+    )
+    args = parser.parse_args()
+    if args.proxied:
+        remote_ip = forwarded_remote_ip
+
     loop = tornado.ioloop.IOLoop.current()
-    threading.Thread(target=loop.start).start()
 
     clients = Connections(loop)
     juggler = mp3Juggler(clients)
@@ -148,10 +177,13 @@ if __name__ == "__main__":
         (r"/download", Download),
     ], static_path=os.path.join(os.path.dirname(__file__), "static"))
 
-    http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
-    http_server.listen(80)
-    myIP = socket.gethostbyname(socket.gethostname())
-    print('*** Websocket Server Started at %s***' % myIP)
+    try:
+        http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
+        http_server.listen(port=args.port, address=args.bind)
+        print('*** Web Server Started on %s:%s***' % (args.bind or '*', args.port))
+    except Exception as err:
+        print('Error starting web server:', err)
+        exit(1)
 
     def signal_handler(sig, frame):
         print("\nSignal caught, exiting...")
@@ -162,6 +194,9 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    threading.Thread(target=loop.start).start()
+    juggler.start()
 
     # Start console
     while True:

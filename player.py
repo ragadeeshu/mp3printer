@@ -22,6 +22,10 @@ class Player:
         ]
         self.play_fallback()
 
+    def release(self):
+        self.mediaplayer.stop()
+        self.instance.release()
+
     def handleDubstep(self):
         self._playingDubstep = False
         self._dubstepPosition=[random.randint(0,2),random.random()]
