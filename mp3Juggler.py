@@ -1,12 +1,10 @@
-import player
 import os
-# import connections
-from threading import Thread
-from threading import Event
-from threading import RLock
-from threading import Condition
+from threading import Thread, Event, RLock, Condition
 import time
 import uuid
+
+# local libs
+import player
 
 class mp3Juggler:
     def __init__(self, clients):

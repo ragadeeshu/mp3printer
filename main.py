@@ -7,14 +7,13 @@ import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop
 import tornado.web
-import asyncio
 import socket
 import json
-import connections
 import yt_dlp
 import urllib.parse
 
-from tornado.platform.asyncio import AnyThreadEventLoopPolicy
+# local libs
+from connections import Connections
 from mp3Juggler import mp3Juggler
 
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
@@ -139,7 +138,7 @@ if __name__ == "__main__":
     loop = tornado.ioloop.IOLoop.current()
     threading.Thread(target=loop.start).start()
 
-    clients = connections.Connections(loop)
+    clients = Connections(loop)
     juggler = mp3Juggler(clients)
 
     application = tornado.web.Application([
