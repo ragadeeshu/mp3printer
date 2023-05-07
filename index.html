@@ -128,6 +128,7 @@
   <script src="http://code.jquery.com/jquery.min.js"></script>
   <script src="{{ static_url("cookie.js") }}"></script>
   <script type="text/javascript">
+  var myaddress = null;
 
   function disclaimer(){
     $("#disclaimer").text(cookies[cookieindex]);
@@ -151,7 +152,7 @@
         .appendTo(table);
       var nameCell = $('<td></td>')
         .appendTo(row);
-      if (curr['nick'] == $('#nickname').val() ){
+      if (curr['address'] == myaddress){
         var prefix = $('<code></code>');
         prefix.append("[")
         prefix.append($('<a></a>', {
@@ -380,6 +381,9 @@
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
+      case 'address':
+        myaddress = message.address;
+        break;
       case 'fallback':
         $("#printlist").html(message.filename);
         break;
@@ -388,13 +392,15 @@
             function() {
               addTable(message.list, message.position);
             });
-
         break;
       case 'progress':
         $("#progress").animate({width: message.position*100+"%"}, 100);
         break;
       case 'error':
         addError(message.message);
+        break;
+      default:
+        console.warn('Unknown message type: ' + message.type);
         break;
       }
     };

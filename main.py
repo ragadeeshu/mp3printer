@@ -84,6 +84,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         clients.add_connection(self)
+        self.write_message(json.dumps({
+            'type': 'address',
+            'address': self.request.remote_ip
+        }))
         self.write_message(json.dumps(juggler.get_list()))
 
     def on_message(self, message):
