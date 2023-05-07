@@ -154,7 +154,7 @@
         .appendTo(row);
       if (curr['address'] == myaddress){
         var prefix = $('<code></code>');
-        prefix.append("[")
+        prefix.append('[');
         prefix.append($('<a></a>', {
           text: 'X',
           title: 'Cancel song',
@@ -169,8 +169,9 @@
             ws.send(JSON.stringify(skipMessage));
           }
         }));
-        prefix.append("]")
-        nameCell.append(prefix)
+        prefix.append(']');
+        nameCell.append(prefix);
+        nameCell.append('\u00A0'); // &nbsp;
       }
       nameCell.append($('<a></a>', {
         target: '_blank',
@@ -190,7 +191,7 @@
       }
 
       row.append($('<td></td>', {
-        text: curr['nick']+"("+curr['address']+")"
+        text: curr['nick']+'\u00A0('+curr['address']+')'
       }));
 
       row.append($('<td></td>', {
