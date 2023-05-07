@@ -44,6 +44,7 @@ class Upload(tornado.web.RequestHandler):
                 'upload_id': self.request.headers.get('Upload-Id'),
                 'nick': self.request.headers.get('Nick'),
                 'filename': filename,
+                'extn': extn,
                 'address': remote_ip(self.request),
                 'path': cachename,
                 'mrl': cachename
@@ -58,9 +59,9 @@ class Upload(tornado.web.RequestHandler):
             self.finish(error_message(err))
 
 class Download(tornado.web.RequestHandler):
-    def get(self):
+    def get(self, track_id):
         try:
-            infile = juggler.download(self.get_argument('id'))
+            infile = juggler.download(track_id)
             if infile is None:
                 self.set_status(404)
                 self.finish("Not found")
@@ -174,7 +175,7 @@ if __name__ == "__main__":
         (r'/ws', WSHandler),
         (r'/', IndexHandler),
         (r"/upload", Upload),
-        (r"/download", Download),
+        (r"/download/(.*)", Download),
     ], static_path=os.path.join(os.path.dirname(__file__), "static"))
 
     try:

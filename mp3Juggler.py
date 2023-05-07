@@ -91,7 +91,8 @@ class mp3Juggler:
                     if(item['prio']>infile['prio']):
                         break
                     index+= 1
-            infile['id'] = str(uuid.uuid4())
+            extn = infile['extn'] if 'extn' in infile else ''
+            infile['id'] = str(uuid.uuid4()) + extn
             self._songlist.insert(index, infile)
 
             if len(self._songlist) == 1:
@@ -165,7 +166,7 @@ class mp3Juggler:
         finally:
             self.lock.release()
         if position > 0:
-            self._clients.message_clients({'type':'progress', 'position':position})
+            self._clients.message_clients({'type': 'progress', 'position': position})
 
 
     def play_next(self):
