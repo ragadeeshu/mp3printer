@@ -63,7 +63,7 @@ class Download(tornado.web.RequestHandler):
             if infile['type'] == 'file':
                 url_name = urllib.parse.quote(infile['filename'])
                 self.add_header('Content-Disposition',
-                    'attachment; filename="'+url_name+"'")
+                    'attachment; filename="'+url_name+'"')
                 with open(infile['mrl'], 'rb') as f:
                     chunk = f.read(1048576)
                     while chunk:
