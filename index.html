@@ -361,22 +361,10 @@
     }, 15000);
   }
 
-  // begin page load code
+  // Websocket stuff
   var ws;
-  $(document).ready(function () {
-    $("div#printlist").hide();
-    $("#connection").show();
-    $('#nickname').hide();
-    nick = getCookie("nick");
-    if (nick != null){
-      $('#nickname').val(nick);
-    }
-    $('#nickname').on("propertychange change keyup paste input", function(evt) {
-      setCookie("nick", $('#nickname').val())
-    });
-    setInterval(disclaimer, 120);
-
-    // Websocket stuff
+  function connectWS() {
+    console.log('Connecting to WebSocket...');
     ws = new WebSocket("ws://" + window.location.host + "/ws");
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
@@ -406,16 +394,39 @@
     };
 
     ws.onclose = function(evt) {
+      console.log('WebSocket connection closed, reconnecting in 10 seconds.');
       $("div#printlist").fadeOut("slow");
       $('#nickname').hide("slow");
       $("#connection").show("slow");
+
+      setTimeout(connectWS, 10000);
     };
 
     ws.onopen = function(evt) {
+      console.log('WebSocket connection opened.');
+
       $("div#printlist").fadeIn("slow");
       $('#nickname').show("slow");
       $("#connection").hide("slow");
     };
+  }
+
+
+  // begin page load code
+  $(document).ready(function () {
+    $("div#printlist").hide();
+    $("#connection").show();
+    $('#nickname').hide();
+    nick = getCookie("nick");
+    if (nick != null){
+      $('#nickname').val(nick);
+    }
+    $('#nickname').on("propertychange change keyup paste input", function(evt) {
+      setCookie("nick", $('#nickname').val())
+    });
+    setInterval(disclaimer, 120);
+
+    connectWS();
 
     $("html").on("dragover", FileDragHover);
     $("html").on("dragleave", FileDragHover);
