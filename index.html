@@ -218,9 +218,9 @@
     if(e.type == "dragover"){
       $("#overlay").fadeIn(150);
       lastcancel = e.timeStamp;
-      unfading = false
+      unfading = false;
     } else if (e.type == "dragleave" && child == false){
-      unfading = true
+      unfading = true;
       setTimeout(function(){
         if(lastcancel < e.timeStamp && unfading && !child){
           unfading = false;
@@ -234,10 +234,10 @@
     e.stopPropagation();
     e.preventDefault();
     lastcancel = e.timeStamp;
-    unfading = false
+    unfading = false;
     $("#overlay").fadeIn(0);
     if(e.type == "dragover"){
-      cildd = true;
+      child = true;
     } else if (e.type == "dragleave"){
       child = false;
     }
@@ -250,7 +250,7 @@
     unfading = false;
     lastcancel = e.timeStamp;
     var dt = e.originalEvent.dataTransfer;
-    if (dt.items) {
+    if (dt && dt.items) {
       var items = dt.items;
       if (items.length < 1) {
         addError("You seem to have dragged nothing, please try again.");
