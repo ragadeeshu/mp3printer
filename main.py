@@ -169,12 +169,16 @@ if __name__ == "__main__":
     clients = Connections(loop)
     juggler = mp3Juggler(clients)
 
-    application = tornado.web.Application([
-        (r'/ws', WSHandler),
-        (r'/', IndexHandler),
-        (r"/upload", Upload),
-        (r"/download/(.*)", Download),
-    ], static_path=os.path.join(os.path.dirname(__file__), "static"))
+    application = tornado.web.Application(
+        [
+            (r'/ws', WSHandler),
+            (r'/', IndexHandler),
+            (r"/upload", Upload),
+            (r"/download/(.*)", Download),
+        ],
+        #compiled_template_cache=False,  # Useful when editing index.html
+        static_path=os.path.join(os.path.dirname(__file__), "static")
+    )
 
     try:
         http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
