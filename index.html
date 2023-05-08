@@ -210,47 +210,34 @@
     console.log(data);
   };
 
-  var unfading = false;
-  var child = false;
-  var lastcancel = 0;
+  var lastDragTarget = null;
+  var overlayTimeout = null;
 
   function FileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
+    var overlay = $('#overlay');
     if(e.type == "dragover"){
-      $("#overlay").fadeIn(150);
-      lastcancel = e.timeStamp;
-      unfading = false;
-    } else if (e.type == "dragleave" && child == false){
-      unfading = true;
-      setTimeout(function(){
-        if(lastcancel < e.timeStamp && unfading && !child){
-          unfading = false;
-          $("#overlay").fadeOut(150);
+      lastDragTarget = e.target;
+      if(!overlay.is(':visible')) {
+        overlay.stop(true).fadeIn('fast');
+      } else if(overlayTimeout) {
+        clearTimeout(overlayTimeout);
+      }
+    } else if(e.type == "dragleave" && $(e.target).is(lastDragTarget)){
+      clearTimeout(overlayTimeout);
+      overlayTimeout = setTimeout(function() {
+        if(overlay.is(':visible')) {
+          overlay.stop(true).fadeOut('fast');
         }
-      }, 400);
-    }
-  }
-
-  function ChildFileDragHover(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    lastcancel = e.timeStamp;
-    unfading = false;
-    $("#overlay").fadeIn(0);
-    if(e.type == "dragover"){
-      child = true;
-    } else if (e.type == "dragleave"){
-      child = false;
+      }, 10);
     }
   }
 
   function FileSelectHandler(e) {
     e.stopPropagation();
     e.preventDefault();
-    $("#overlay").fadeOut(150);
-    unfading = false;
-    lastcancel = e.timeStamp;
+    $('#overlay').fadeOut('fast');
     var dt = e.originalEvent.dataTransfer;
     if (dt && dt.items) {
       var items = dt.items;
@@ -432,9 +419,6 @@
     $("html").on("dragover", FileDragHover);
     $("html").on("dragleave", FileDragHover);
     $("html").on("drop", FileSelectHandler);
-    $(".child-elements").on("dragover", ChildFileDragHover);
-    $(".child-elements").on("dragleave", ChildFileDragHover);
-    $(".child-elements").on("drop", FileSelectHandler);
   });
   </script>
 </head>
@@ -442,10 +426,10 @@
 <body>
   <div id="overlay" class="child-elements">
     <p>
-      Drop files or youtube links here to upload!
+      Drop files or links here to upload!
     </p>
   </div>
-  <section id = "page_body" class="child-elements">
+  <section id="page_body" class="child-elements">
     <h1>Welcome to the Deeshu mp3 printer</h1>
     <input id="nickname" type ="text" placeholder="Name goes here...">
     <div id="connection_details">
