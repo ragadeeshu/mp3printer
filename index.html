@@ -159,7 +159,7 @@
   var myaddress = null;
 
   function disclaimer(){
-    $("#disclaimer").text(cookies[cookieindex]);
+    $('#disclaimer').text(cookies[cookieindex]);
     cookieindex++;
     cookieindex%=cookies.length;
   }
@@ -234,7 +234,7 @@
 
   // log function
   log = function(data){
-    $("div#terminal").prepend("</br>" +data);
+    $('div#terminal').prepend('<br/>' +data);
     console.log(data);
   };
 
@@ -245,14 +245,14 @@
     e.stopPropagation();
     e.preventDefault();
     var overlay = $('#overlay');
-    if(e.type == "dragover"){
+    if(e.type == 'dragover'){
       lastDragTarget = e.target;
       if(!overlay.is(':visible')) {
         overlay.stop(true).fadeIn('fast');
       } else if(overlayTimeout) {
         clearTimeout(overlayTimeout);
       }
-    } else if(e.type == "dragleave" && $(e.target).is(lastDragTarget)){
+    } else if(e.type == 'dragleave' && $(e.target).is(lastDragTarget)){
       clearTimeout(overlayTimeout);
       overlayTimeout = setTimeout(function() {
         if(overlay.is(':visible')) {
@@ -270,7 +270,7 @@
     if (dt && dt.items) {
       var items = dt.items;
       if (items.length < 1) {
-        addError("You seem to have dragged nothing, please try again.");
+        addError('You seem to have dragged nothing, please try again.');
       }
       var uploads = [];
       for (var i = 0; i < items.length; i++) {
@@ -406,7 +406,7 @@
   var ws;
   function connectWS() {
     console.log('Connecting to WebSocket...');
-    ws = new WebSocket("ws://" + window.location.host + "/ws");
+    ws = new WebSocket('ws://' + window.location.host + '/ws');
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
@@ -414,16 +414,16 @@
         myaddress = message.address;
         break;
       case 'fallback':
-        $("#printlist").html(message.filename);
+        $('#printlist').text(message.filename);
         break;
       case 'list':
-        $("div#printlist").fadeTo(400, 0).promise().done(
+        $('div#printlist').fadeTo(400, 0).promise().done(
             function() {
               addTable(message.list, message.position);
             });
         break;
       case 'progress':
-        $("#progress").animate({width: message.position*100+"%"}, 100);
+        $('#progress').animate({width: message.position*100+'%'}, 100);
         break;
       case 'error':
         addError(message.message);
@@ -482,9 +482,9 @@
 
     connectWS();
 
-    $("html").on("dragover", FileDragHover);
-    $("html").on("dragleave", FileDragHover);
-    $("html").on("drop", FileSelectHandler);
+    $('html').on('dragover', FileDragHover);
+    $('html').on('dragleave', FileDragHover);
+    $('html').on('drop', FileDropHandler);
   });
   </script>
 </head>
