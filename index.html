@@ -14,17 +14,23 @@
   a {
     pointer-events: auto;
   }
-  #nickname {
-    pointer-events: auto;
 
-    font-family: Arial, Helvetica, sans-serif;
-    color: #D0B11B;
-    font-size: 12px;
-    text-shadow: 1px 1px 0px #5a4d0c;
-    background: #222;
-    border: #D0B11B 1px solid;
-
+  #inputs {
     margin-bottom: 2em;
+  }
+  #inputs p {
+    margin: 0.5em;
+  }
+  #inputs label, #inputs input, #inputs button {
+    display: inline-block;
+    vertical-align: middle;
+    pointer-events: auto;
+  }
+  #inputs input, #inputs button {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+
+    border: #D0B11B 1px solid;
 
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
@@ -34,10 +40,31 @@
     -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
     text-align: center;
+
+    margin: 0.25em;
+  }
+  #inputs input {
+    color: #D0B11B;
+    text-shadow: 1px 1px 1px #000;
+    background: #222;
+  }
+  #inputs button {
+    background: #D0B11B;
+    color: #222;
+    text-shadow: 1px 1px 1px #000;
+    cursor: pointer;
+  }
+  #inputs #file_selector {
+    display: none;
+  }
+  #inputs #upload_hint {
+    font-size: 0.8em;
+    color: #5a4d0c;
   }
 
   #connection_details {
     color: #D01B1B;
+    margin-bottom: 1em;
   }
 
   #errors p {
@@ -73,6 +100,7 @@
   }
 
   body {
+    font-family: Arial, Helvetica, sans-serif;
     text-align: center;
     margin: 0px;
     width: 100%;
@@ -139,7 +167,7 @@
   function addTable(list, position) {
     var table = $('<table></table>').addClass('printtable');
     var headerRow = $('<tr></tr>');
-    var headers = ['File','Progress','User', 'Prio'];
+    var headers = ['Track','Progress','User', 'Prio'];
     for(i=0; i<headers.length; i++){
       var header = $('<th></th>').text(headers[i]);
       headerRow.append(header);
@@ -234,7 +262,7 @@
     }
   }
 
-  function FileSelectHandler(e) {
+  function FileDropHandler(e) {
     e.stopPropagation();
     e.preventDefault();
     $('#overlay').fadeOut('fast');
@@ -248,92 +276,117 @@
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
         if (item.kind == 'file') {
-          var file = item.getAsFile();
-          if (file.size > 0) {
-            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
-              uploads.push({ 'type': 'file', 'file': file });
-            } else {
-              addError("Please, only audio files.");
-              return false;
-            }
+          if (!AddFile(item.getAsFile(), uploads)) {
+            return false;
           }
         } else if (item.kind == 'string' && item.type == 'text/plain') {
           var lines = dt.getData('text/plain').split('\n');
-          var re_host = location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-          var host_match = new RegExp('^https?://' + re_host);
           for (var l = 0; l < lines.length; l++) {
-            var link = lines[l]
-            if (!link.match(host_match)) {
-              if(link.startsWith('http://') || link.startsWith('https://')) {
-                uploads.push({ 'type': 'link', 'link': link });
-              } else {
-                addError("Please, only web links.");
-                return false;
-              }
+            if (!AddLink(lines[l], uploads)) {
+              return false;
             }
           }
         }
       }
-      if (uploads.length > 10) {
-        addError("Please, no more than 10 tracks at a time.");
-        return false;
-      }
-      var sawErr = false;
-      var last_id = null;
-      for (var i = 0; i < uploads.length; i++) {
-        var upload = uploads[i];
-        switch(upload.type) {
-        case 'file':
-          last_id = SendFile(upload.file, last_id);
-          break;
-        case 'link':
-          last_id = SendLink(upload.link, last_id);
-          break;
-        }
-      }
+      UploadTracks(uploads);
     }
     else {
-      addError("Please upgrade your browser...");
+      addError('Please upgrade your browser...');
     }
+  }
+
+  function FileInputHandler(files) {
+    var uploads = [];
+    for (var i = 0; i < files.length; i++) {
+      if (!AddFile(files[i], uploads)) {
+        return false;
+      }
+    }
+    UploadTracks(uploads);
+  }
+
+  function LinkInputHandler(link) {
+    var uploads = [];
+    if (!AddLink(link, uploads)) {
+      return false;
+    }
+    UploadTracks(uploads);
+  }
+
+  function AddFile(file, uploads) {
+    if (file.size > 0) {
+      if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+        uploads.push({ 'type': 'file', 'file': file });
+      } else {
+        addError('Please, only audio files.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function AddLink(link, uploads) {
+    var re_host = window.location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    var host_match = new RegExp('^https?://' + re_host);
+    if (!link.match(host_match)) {
+      if (link.startsWith('http://') || link.startsWith('https://')) {
+        uploads.push({ 'type': 'link', 'link': link });
+      } else {
+        addError('Please, only web links.');
+        return false;
+      }
+    }
+    return true;
   }
 
   function UploadId(nick, name) {
     return nick + ':' + name + ':' + ((new Date()).getTime() + Math.random());
   }
 
-  function SendFile(file, parent_id) {
+  function UploadTracks(uploads) {
+    if (uploads.length > 10) {
+      addError('Please, no more than 10 tracks at a time.');
+      return false;
+    }
     var nick = $('#nickname').val();
-    var id = UploadId(nick, file.name);
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function (aEvt) {
-      if (req.readyState == 4 && req.status != 200) {
-        addError(req.responseText);
+    var last_id = null;
+    for (var i = 0; i < uploads.length; i++) {
+      var upload = uploads[i];
+      switch(upload.type) {
+      case 'file':
+        var id = UploadId(nick, upload.file.name);
+        var req = new XMLHttpRequest();
+        req.onreadystatechange = function (aEvt) {
+          if (req.readyState == 4 && req.status != 200) {
+            addError(req.responseText);
+          }
+        };
+        req.open('post', 'upload', true)
+        req.setRequestHeader('Filename', upload.file.name);
+        req.setRequestHeader('Nick', nick);
+        req.setRequestHeader('Upload-Id', id);
+        if (last_id) {
+          req.setRequestHeader('Parent-Id', last_id);
+        }
+        req.send(upload.file);
+        last_id = id;
+        break;
+      case 'link':
+        var id = UploadId(nick, upload.link);
+        var linkToUpload = {
+          'type': 'link',
+          'id': id,
+          'nick': nick,
+          'link': upload.link
+        };
+        if (last_id) {
+          linkToUpload.parent = last_id;
+        }
+        ws.send(JSON.stringify(linkToUpload));
+        id = last_id;
+        break;
       }
-    };
-    req.open('post', 'upload', true)
-    req.setRequestHeader("Filename", file.name);
-    req.setRequestHeader("Nick", nick);
-    req.setRequestHeader("Upload-Id", id);
-    if (parent_id) {
-      req.setRequestHeader("Parent-Id", parent_id);
     }
-    req.send(file);
-    return id;
-  }
-
-  function SendLink(link, parent_id) {
-    var id = UploadId(nick, link);
-    var linkToUpload = {
-      "type": "link",
-      "id": id,
-      "nick": $('#nickname').val(),
-      "link": link
-    };
-    if (parent_id) {
-      linkToUpload.parent = parent_id;
-    }
-    ws.send(JSON.stringify(linkToUpload));
-    return id;
   }
 
   function addError(msg) {
@@ -343,7 +396,7 @@
       .text(msg)
       .hide()
       .appendTo(line);
-    error.show('slow');
+    error.fadeIn('slow');
     setTimeout(function(){
       line.fadeOut('slow', function() { line.remove(); });
     }, 15000);
@@ -383,9 +436,9 @@
 
     ws.onclose = function(evt) {
       console.log('WebSocket connection closed, reconnecting in 10 seconds.');
-      $("div#printlist").fadeOut("slow");
-      $('#nickname').hide("slow");
-      $("#connection").show("slow");
+      $('div#printlist').fadeOut('slow');
+      $('#inputs').fadeOut('slow');
+      $('#connection').fadeIn('slow');
 
       setTimeout(connectWS, 10000);
     };
@@ -393,25 +446,38 @@
     ws.onopen = function(evt) {
       console.log('WebSocket connection opened.');
 
-      $("div#printlist").fadeIn("slow");
-      $('#nickname').show("slow");
-      $("#connection").hide("slow");
+      $('div#printlist').fadeIn('slow');
+      $('#inputs').fadeIn('slow');
+      $('#connection').fadeOut('slow');
     };
   }
 
 
   // begin page load code
   $(document).ready(function () {
-    $("div#printlist").hide();
-    $("#connection").show();
-    $('#nickname').hide();
-    nick = getCookie("nick");
+    $('div#printlist').hide();
+    $('#connection').show();
+    $('#inputs').hide();
+
+    var nick = getCookie('nick');
     if (nick != null){
       $('#nickname').val(nick);
     }
-    $('#nickname').on("propertychange change keyup paste input", function(evt) {
-      setCookie("nick", $('#nickname').val())
+    $('#nickname').on('propertychange change keyup paste input', function(evt) {
+      setCookie('nick', $('#nickname').val())
     });
+
+    var selector = $('#file_selector');
+    $('#upload_file').click(function() {
+      selector.click();
+    });
+    selector.on('change', function() {
+      FileInputHandler(selector.get(0).files);
+    })
+    $('#upload_link').click(function() {
+      LinkInputHandler(prompt('Link URL:'));
+    });
+
     setInterval(disclaimer, 120);
 
     connectWS();
@@ -431,7 +497,20 @@
   </div>
   <section id="page_body" class="child-elements">
     <h1>Welcome to the Deeshu mp3 printer</h1>
-    <input id="nickname" type ="text" placeholder="Name goes here...">
+    <div id="inputs">
+      <p>
+        <label for="nickname">Name:</label>
+        <input id="nickname" type="text" placeholder="Name goes here...">
+      </p>
+      <p>
+        <input id="file_selector" type="file" multiple>
+        <label>Upload:</label>
+        <button id="upload_file">File(s)</button>
+        <button id="upload_link">Link</button>
+        <br />
+        <span id="upload_hint">(Or just drag files and/or links into this window)</span>
+      </p>
+    </div>
     <div id="connection_details">
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
       <div id="errors"></div>
