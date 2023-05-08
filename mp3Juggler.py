@@ -96,7 +96,7 @@ class mp3Juggler:
             self._songlist.insert(index, infile)
 
             if len(self._songlist) == 1:
-                self._player.play(infile['filename'], infile['path'])
+                self._player.play(infile)
 
             if 'upload_id' in infile and infile['upload_id'] in self._waiting:
                 wait = self._waiting[infile['upload_id']]
@@ -151,7 +151,7 @@ class mp3Juggler:
             self.lock.release()
         self._clients.message_clients(self.get_list())
 
-    def song_finished(self, event, player):
+    def song_finished(self, event=None, player=None):
         self._event.set()
 
     def time_change(self):
@@ -184,8 +184,7 @@ class mp3Juggler:
                     if(not self._songlist):
                         self._player.play_fallback()
                     else:
-                        nxt = self._songlist[0]
-                        self._player.play(nxt['filename'], nxt['path'] )
+                        self._player.play(self._songlist[0])
             finally:
                 self.lock.release()
             self._clients.message_clients(self.get_list())

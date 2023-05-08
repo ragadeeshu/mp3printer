@@ -31,12 +31,26 @@ class Player:
         self._dubstepPosition=[random.randint(0,2),random.random()]
         self._shouldPlayDubstep = not self._shouldPlayDubstep
 
-    def play(self, filename, path):
-        self.handleDubstep()
-        print("Now playing: "+filename)
-        self.media = self.instance.media_new(path)
-        self.mediaplayer.set_media(self.media)
-        self.mediaplayer.play()
+    def _get_link_url(self, link):
+        ydl_opts = {
+            'quiet': True,
+            'format': 'bestaudio/best'
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(link, download=False)
+            return info_dict.get("url", None)
+
+    def play(self, track):
+        try:
+            self.handleDubstep()
+            print("Now playing: "+track['filename'])
+            path = track['path'] if 'path' in track else self._get_link_url(track['mrl'])
+            self.media = self.instance.media_new(path)
+            self.mediaplayer.set_media(self.media)
+            self.mediaplayer.play()
+        except Exception as err:
+            print(err)
+            self._juggler.song_finished()
 
     def scratch(self):
         self.handleDubstep()
@@ -47,23 +61,21 @@ class Player:
         return self.mediaplayer.get_position()
 
     def play_fallback(self):
-        if(self._shouldPlayDubstep):
-            if(self._playingDubstep):
-                self._dubstepPosition[0]=(self._dubstepPosition[0]+1)%len(self._dubstep)
-                self._dubstepPosition[1]=0
-            print("Now playing: Dubstep")
-            self._playingDubstep = True;
-            ydl_opts = {
-            'quiet': "True",
-            'format': 'bestaudio/best'}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(self._dubstep[self._dubstepPosition[0]], download=False)
-                url = info_dict.get("url", None)
-            self.media = self.instance.media_new(url)
-            self.mediaplayer.set_media(self.media)
-            self.mediaplayer.play()
-            self.mediaplayer.set_position(self._dubstepPosition[1])
-        else:
-            print("Now playing: Slay radio")
-            self.mediaplayer.set_media(self._fallback)
-            self.mediaplayer.play()
+        try:
+            if(self._shouldPlayDubstep):
+                if(self._playingDubstep):
+                    self._dubstepPosition[0]=(self._dubstepPosition[0]+1)%len(self._dubstep)
+                    self._dubstepPosition[1]=0
+                print("Now playing: Dubstep")
+                url = self._get_link_url(self._dubstep[self._dubstepPosition[0]])
+                self.media = self.instance.media_new(url)
+                self.mediaplayer.set_media(self.media)
+                self.mediaplayer.play()
+                self.mediaplayer.set_position(self._dubstepPosition[1])
+            else:
+                print("Now playing: Slay radio")
+                self.mediaplayer.set_media(self._fallback)
+                self.mediaplayer.play()
+        except Exception as err:
+            print(err)
+            self._juggler.song_finished()

@@ -46,8 +46,8 @@ class Upload(tornado.web.RequestHandler):
                 'filename': filename,
                 'extn': extn,
                 'address': remote_ip(self.request),
-                'path': cachename,
-                'mrl': cachename
+                'mrl': cachename,
+                'path': cachename
             }
             with os.fdopen(fd, 'wb') as fh:
                 fh.write(self.request.body)
@@ -101,21 +101,19 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             parsed_json = json.loads(message)
             if parsed_json['type'] == "link":
                 ydl_opts = {
-                    'quiet': "True",
+                    'quiet': True,
                     'format': 'bestaudio/best'
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info_dict = ydl.extract_info(parsed_json['link'], download=False)
-                    video_title = info_dict.get('title', None)
-                    url = info_dict.get("url", None)
+                    title = info_dict.get('title', None)
                 infile = {
                     'type': 'link',
                     'upload_id': parsed_json['id'],
                     'nick': parsed_json['nick'],
-                    'filename': video_title,
+                    'filename': title,
                     'address': remote_ip(self.request),
-                    'mrl': parsed_json['link'],
-                    'path': url
+                    'mrl': parsed_json['link']
                 }
                 parent = parsed_json['parent'] if 'parent' in parsed_json else None
                 juggler.juggle(infile, parent)
