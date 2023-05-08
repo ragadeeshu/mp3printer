@@ -168,13 +168,13 @@
     var table = $('<table></table>').addClass('printtable');
     var headerRow = $('<tr></tr>');
     var headers = ['Track','Progress','User', 'Prio'];
-    for(i=0; i<headers.length; i++){
+    for (var i=0; i<headers.length; i++){
       var header = $('<th></th>').text(headers[i]);
       headerRow.append(header);
     }
     table.append(headerRow);
 
-    for(i=0; i<list.length; i++){
+    for (var i=0; i<list.length; i++){
       var curr = list[i];
       var row = $('<tr></tr>')
         .appendTo(table);
@@ -194,7 +194,7 @@
               'type': 'skip',
               'id': $(event.target).data('id')
             };
-            ws.send(JSON.stringify(skipMessage));
+            sendWS(JSON.stringify(skipMessage));
           }
         }));
         prefix.append(']');
@@ -382,7 +382,7 @@
         if (last_id) {
           linkToUpload.parent = last_id;
         }
-        ws.send(JSON.stringify(linkToUpload));
+        sendWS(JSON.stringify(linkToUpload));
         id = last_id;
         break;
       }
@@ -404,6 +404,7 @@
 
   // Websocket stuff
   var ws;
+  var wsQueue = [];
   function connectWS() {
     console.log('Connecting to WebSocket...');
     ws = new WebSocket('ws://' + window.location.host + '/ws');
@@ -449,7 +450,20 @@
       $('div#printlist').fadeIn('slow');
       $('#inputs').fadeIn('slow');
       $('#connection').fadeOut('slow');
+
+      var queue = wsQueue;
+      wsQueue = [];
+      for (var i = 0; i < queue.length; i++) {
+        sendWS(queue[i]);
+      }
     };
+  }
+  function sendWS(message) {
+    if (ws.readyState == WebSocket.OPEN) {
+      ws.send(message);
+    } else {
+      wsQueue.push(message);
+    }
   }
 
 
