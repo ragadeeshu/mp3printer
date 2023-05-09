@@ -216,10 +216,13 @@ class mp3Juggler:
                     'list': list(map(self._sanitize_item, self._songlist))
                 }
             else:
-                if(self._player._playingDubstep):
-                    message = "Now playing dubstep..."
+                if(self._running):
+                    if(self._player._playingDubstep):
+                        message = "Now playing dubstep..."
+                    else:
+                        message = "Now playing Slay Radio..."
                 else:
-                    message = "Now playing Slay Radio..."
+                    message = "Not active"
                 return { 'type': 'fallback', 'filename': message}
         finally:
             self.lock.release()
