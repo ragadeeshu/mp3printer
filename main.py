@@ -210,3 +210,6 @@ if __name__ == "__main__":
         elif (inp == "c"):
             print("Clearing...")
             juggler.clear()
+        elif (inp == "p"):
+            print("Toggling pause...")
+            juggler.pause()

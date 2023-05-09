@@ -50,6 +50,9 @@ class Player:
             print(err)
             self._juggler.song_finished()
 
+    def pause(self):
+        self.mediaplayer.pause()
+
     def scratch(self):
         self._handleDubstep()
         self.mediaplayer.set_media(self._scratch)

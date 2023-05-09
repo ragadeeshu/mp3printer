@@ -51,6 +51,13 @@ class mp3Juggler:
         finally:
             self.lock.release()
 
+    def pause(self):
+        self.lock.acquire()
+        try:
+            self._player.pause()
+        finally:
+            self.lock.release()
+
     def juggle(self, infile, parent_id = None):
         if not self._running:
             raise Exception('Queue is not running')
