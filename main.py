@@ -58,6 +58,9 @@ class Upload(tornado.web.RequestHandler):
             free = shutil.disk_usage(tempfile.gettempdir()).free
             if int(self.request.headers.get('Content-Length')) > free/2:
                 raise Exception('Uploaded file too large for current free space')
+            file_type = self.request.headers.get('Content-Type')
+            if not file_type.startswith('audio/') and not file_type.startswith('video/'):
+                raise Exception('Only audio or video files, please')
             filename = self.request.headers.get('Filename')
             extn = os.path.splitext(filename)[-1]
             fd, cachename = tempfile.mkstemp(prefix=filename, suffix=extn)
@@ -154,12 +157,15 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         try:
             parsed_json = json.loads(message)
             if parsed_json['type'] == "link":
+                link = parsed_json['link']
+                if not link.startswith('http://') and not link.startswith('https://'):
+                    raise Exception('Only web links, please')
                 ydl_opts = {
                     'quiet': True,
                     'format': 'bestaudio/best'
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info_dict = ydl.extract_info(parsed_json['link'], download=False)
+                    info_dict = ydl.extract_info(link, download=False)
                     title = info_dict.get('title', None)
                 infile = {
                     'type': 'link',
@@ -167,7 +173,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                     'nick': parsed_json['nick'],
                     'filename': title,
                     'address': remote_ip(self.request),
-                    'mrl': parsed_json['link']
+                    'mrl': link
                 }
                 parent = parsed_json['parent'] if 'parent' in parsed_json else None
                 juggler.juggle(infile, parent)

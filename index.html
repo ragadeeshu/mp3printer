@@ -332,12 +332,7 @@
 
   function AddFile(file, uploads) {
     if (file.size > 0) {
-      if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
-        uploads.push({ 'type': 'file', 'file': file });
-      } else {
-        addError('Please, only audio files.');
-        return false;
-      }
+      uploads.push({ 'type': 'file', 'file': file });
     }
     return true;
   }
@@ -346,12 +341,7 @@
     var re_host = window.location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     var host_match = new RegExp('^https?://' + re_host);
     if (!link.match(host_match)) {
-      if (link.startsWith('http://') || link.startsWith('https://')) {
-        uploads.push({ 'type': 'link', 'link': link });
-      } else {
-        addError('Please, only web links.');
-        return false;
-      }
+      uploads.push({ 'type': 'link', 'link': link });
     }
     return true;
   }
