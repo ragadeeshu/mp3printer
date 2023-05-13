@@ -378,10 +378,11 @@
             addError(req.responseText);
           }
         };
-        req.open('post', 'upload', true)
+        req.open('put', 'upload', true)
         req.setRequestHeader('Filename', upload.file.name);
         req.setRequestHeader('Nick', nick);
         req.setRequestHeader('Upload-Id', id);
+        req.setRequestHeader('Content-Type', upload.file.type);
         if (last_id) {
           req.setRequestHeader('Parent-Id', last_id);
         }

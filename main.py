@@ -1,6 +1,7 @@
 import os
 import re
 import signal
+import shutil
 import tempfile
 import threading
 import tornado.httpserver
@@ -46,13 +47,21 @@ class IndexHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("index.html")
 
+@tornado.web.stream_request_body
 class Upload(tornado.web.RequestHandler):
-    def post(self):
+    def prepare(self):
+        self.fh = None
+        self.infile = None
+        self.error = None
+        self.done = False
         try:
+            free = shutil.disk_usage(tempfile.gettempdir()).free
+            if int(self.request.headers.get('Content-Length')) > free/2:
+                raise Exception('Uploaded file too large for current free space')
             filename = self.request.headers.get('Filename')
             extn = os.path.splitext(filename)[-1]
-            fd, cachename = tempfile.mkstemp(suffix=extn)
-            infile = {
+            fd, cachename = tempfile.mkstemp(prefix=filename, suffix=extn)
+            self.infile = {
                 'type': 'file',
                 'upload_id': self.request.headers.get('Upload-Id'),
                 'nick': self.request.headers.get('Nick'),
@@ -62,14 +71,46 @@ class Upload(tornado.web.RequestHandler):
                 'mrl': cachename,
                 'path': cachename
             }
-            with os.fdopen(fd, 'wb') as fh:
-                fh.write(self.request.body)
-            juggler.juggle(infile, self.request.headers.get('Parent-Id'))
+            self.fh = os.fdopen(fd, 'wb')
+        except Exception as err:
+            self.error = err
+
+    def data_received(self, chunk):
+        if self.error is None:
+            try:
+                self.fh.write(chunk)
+            except Exception as err:
+                self.error = err
+
+    def put(self):
+        try:
+            if self.error is not None:
+                raise self.error
+            self.fh.close()
+            juggler.juggle(self.infile, self.request.headers.get('Parent-Id'))
+            self.done = True
             self.finish()
         except Exception as err:
+            print(err)
             self.clear()
             self.set_status(500)
             self.finish(error_message(err))
+
+    def on_finish(self):
+        if not self.done:
+            try:
+                self.fh.close()
+            except:
+                pass
+            try:
+                os.remove(self.infile['path'])
+            except:
+                pass
+            self.done = True
+
+    def on_connection_close(self):
+        self.on_finish()
+        super().on_connection_close()
 
 class Download(tornado.web.RequestHandler):
     def get(self, track_id):
@@ -168,7 +209,10 @@ def start(port=80, bind=None, player_args=None):
         static_path=os.path.join(os.path.dirname(__file__), "static")
     )
 
-    http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
+    http_server = tornado.httpserver.HTTPServer(
+        application,
+        max_body_size=1024*1024*1024, # 1GiB
+    )
     http_server.listen(port=port, address=bind)
 
     threading.Thread(target=loop.start).start()
