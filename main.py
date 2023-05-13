@@ -17,11 +17,16 @@ import urllib.parse
 from connections import Connections
 from mp3Juggler import mp3Juggler
 
-ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
-error_prefix = re.compile(r'^[Ee][Rr][Rr]([Oo][Rr])?:\s*')
+loop = None
+clients = None
+juggler = None
+http_server = None
+
+ANSI_ESCAPE = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
+ERROR_PREFIX = re.compile(r'^[Ee][Rr][Rr]([Oo][Rr])?:\s*')
 
 def error_message(err):
-    return error_prefix.sub('', ansi_escape.sub('', str(err)))
+    return ERROR_PREFIX.sub('', ANSI_ESCAPE.sub('', str(err)))
 
 def actual_remote_ip(request):
     return request.remote_ip
@@ -138,6 +143,41 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         clients.close_connection(self)
 
 
+def start(port=80, bind=None):
+    global loop, clients, juggler, http_server
+    loop = tornado.ioloop.IOLoop.current()
+
+    clients = Connections(loop)
+    juggler = mp3Juggler(clients)
+
+    application = tornado.web.Application(
+        [
+            (r'/ws', WSHandler),
+            (r'/', IndexHandler),
+            (r"/upload", Upload),
+            (r"/download/(.*)", Download),
+        ],
+        #compiled_template_cache=False,  # Useful when editing index.html
+        static_path=os.path.join(os.path.dirname(__file__), "static")
+    )
+
+    http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
+    http_server.listen(port=port, address=bind)
+
+    threading.Thread(target=loop.start).start()
+    juggler.start()
+
+def stop():
+    if loop is not None:
+        # Should use add_callback_from_signal according to documentation, but it's deprecated
+        # on master (since 2023-05-02), and add_callback should have the same effect since 6.0.
+        loop.add_callback(lambda: loop.stop())
+    if http_server is not None:
+        http_server.stop()
+    if juggler is not None:
+        juggler.stop()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Musical democracy'
@@ -161,45 +201,28 @@ if __name__ == "__main__":
         default=80
     )
     args = parser.parse_args()
+
     if args.proxied:
         remote_ip = forwarded_remote_ip
 
-    loop = tornado.ioloop.IOLoop.current()
-
-    clients = Connections(loop)
-    juggler = mp3Juggler(clients)
-
-    application = tornado.web.Application(
-        [
-            (r'/ws', WSHandler),
-            (r'/', IndexHandler),
-            (r"/upload", Upload),
-            (r"/download/(.*)", Download),
-        ],
-        #compiled_template_cache=False,  # Useful when editing index.html
-        static_path=os.path.join(os.path.dirname(__file__), "static")
-    )
-
-    try:
-        http_server = tornado.httpserver.HTTPServer(application, max_buffer_size=150*1024*1024)
-        http_server.listen(port=args.port, address=args.bind)
-        print('*** Web Server Started on %s:%s***' % (args.bind or '*', args.port))
-    except Exception as err:
-        print('Error starting web server:', err)
-        exit(1)
-
     def signal_handler(sig, frame):
         print("\nSignal caught, exiting...")
-        loop.add_callback_from_signal(lambda: loop.stop())
-        http_server.stop()
-        juggler.stop()
+        stop()
         exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    threading.Thread(target=loop.start).start()
-    juggler.start()
+    try:
+        start(args.port, args.bind, player_args)
+        print('*** Web Server Started on %s:%s***' % (
+            args.bind or '*',
+            args.port
+        ))
+    except Exception as err:
+        print('Error starting web server:', err)
+        exit(1)
+
 
     # Start console
     while True:
