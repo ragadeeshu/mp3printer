@@ -13,6 +13,14 @@ import yt_dlp
 import argparse
 import urllib.parse
 
+
+# optional lib
+try:
+    import pychromecast.discovery
+    HAS_PYCHROMECAST = True
+except ModuleNotFoundError:
+    HAS_PYCHROMECAST = False
+
 # local libs
 from connections import Connections
 from mp3Juggler import mp3Juggler
@@ -142,13 +150,12 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         print('connection closed')
         clients.close_connection(self)
 
-
-def start(port=80, bind=None):
+def start(port=80, bind=None, player_args=None):
     global loop, clients, juggler, http_server
     loop = tornado.ioloop.IOLoop.current()
 
     clients = Connections(loop)
-    juggler = mp3Juggler(clients)
+    juggler = mp3Juggler(clients, player_args)
 
     application = tornado.web.Application(
         [
@@ -193,6 +200,18 @@ if __name__ == "__main__":
         help='IP to run HTTP server on (default: any IP)',
         default=None
     )
+    if HAS_PYCHROMECAST:
+        parser.add_argument(
+            '-c', '--chromecast',
+            type=str,
+            help='Name of Chromecast (or Chromecast group) to cast to.',
+            default=None
+        )
+        parser.add_argument(
+            '-C', '--chromecast-list',
+            action='store_true',
+            help='List available Chromecast (and Chromecast group) names and exit.'
+        )
     parser.add_argument(
         'port',
         type=int,
@@ -201,6 +220,31 @@ if __name__ == "__main__":
         default=80
     )
     args = parser.parse_args()
+
+    player_args = {}
+
+    if HAS_PYCHROMECAST:
+        if args.chromecast_list:
+            print('Available Chromecast targets:')
+            services, browser = pychromecast.discovery.discover_chromecasts()
+            pychromecast.discovery.stop_discovery(browser)
+            for service in services:
+                print('* \"%s\"' % service.friendly_name)
+            exit(0)
+
+        if args.chromecast is not None:
+            services, browser = pychromecast.discovery.discover_listed_chromecasts(
+                friendly_names=[args.chromecast]
+            )
+            pychromecast.discovery.stop_discovery(browser)
+            if len(services) < 1:
+                print('Could not find Chromecast (or group) "%s"' % args.chromecast)
+                exit(1)
+            elif len(services) > 1:
+                print('More than one Chromecast (or group) matched "%s"' % args.chromecast)
+                exit(1)
+
+            player_args['chromecast'] = (services[0].host, services[0].port)
 
     if args.proxied:
         remote_ip = forwarded_remote_ip

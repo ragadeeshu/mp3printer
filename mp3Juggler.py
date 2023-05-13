@@ -7,8 +7,9 @@ import uuid
 from player import Player
 
 class mp3Juggler:
-    def __init__(self, clients):
+    def __init__(self, clients, player_args=None):
         self._clients = clients
+        self._player_args = player_args
         self._songlist = []
         self._counts = {}
         self._event = Event()
@@ -28,7 +29,7 @@ class mp3Juggler:
 
     def start(self):
         if not self._running:
-            self._player = Player(self);
+            self._player = Player(self, **self._player_args);
             self._next_thread = Thread(target=self.play_next, args=())
             self._progress_thread = Thread(target=self.time_change, args=())
             self._running = True

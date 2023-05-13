@@ -12,9 +12,16 @@ class Player:
     ]
     SCRATCH = "shortscratch.wav"
 
-    def __init__(self, juggler):
+    def __init__(self, juggler, chromecast=None):
         self._juggler = juggler
-        self.instance = vlc.Instance("--no-video")
+        instance_opts = ["--no-video"]
+        self._media_opts = []
+        if chromecast is not None:
+            instance_opts.append("--no-sout-video")
+            # These options don't work as instance options, for some reason...
+            self._media_opts.append(":sout=#chromecast{ip=%s,port=%d}" % chromecast)
+            self._media_opts.append(":demux-filter=demux_chromecast")
+        self._instance = vlc.Instance(*instance_opts)
         self._mediaplayer = self._instance.media_player_new()
         vlc_events = self._mediaplayer.event_manager()
         vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
@@ -41,7 +48,7 @@ class Player:
             return info_dict.get("url", None)
 
     def _play_mrl(self, mrl):
-       self._mediaplayer.set_mrl(mrl)
+       self._mediaplayer.set_mrl(mrl, *self._media_opts)
        self._mediaplayer.play()
 
     def play(self, track):
