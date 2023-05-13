@@ -1,65 +1,93 @@
-import mp3Juggler
 import vlc
 import random
-import youtube_dl
+import yt_dlp
 
 class Player:
-    def __init__(self, juggler):
-        self._juggler = juggler
-        self.instance = vlc.Instance("--no-video")
-        self.mediaplayer = self.instance.media_player_new()
-        self._fallback = self.instance.media_new("http://relay3.slayradio.org:8000/")
-        self._scratch = self.instance.media_new("shortscratch.wav")
-        self.vlc_events = self.mediaplayer.event_manager()
-        self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
-        self._playingDubstep=False
-        self._shouldPlayDubstep=False;
-        self._dubstepPosition=[random.randint(0,2),random.random()]
-        self._dubstep = [
+
+    SLAYRADIO = "http://relay3.slayradio.org:8000/"
+    DUBSTEP = [
         "https://www.youtube.com/watch?v=dLyH94jNau0",
         "https://www.youtube.com/watch?v=RRucF7ffPRE",
         "https://www.youtube.com/watch?v=nXaMKZApYDM"
-        ]
+    ]
+    SCRATCH = "shortscratch.wav"
+
+    def __init__(self, juggler, chromecast=None):
+        self._juggler = juggler
+        instance_opts = ["--no-video"]
+        self._media_opts = []
+        if chromecast is not None:
+            instance_opts.append("--no-sout-video")
+            # These options don't work as instance options, for some reason...
+            self._media_opts.append(":sout=#chromecast{ip=%s,port=%d}" % chromecast)
+            self._media_opts.append(":demux-filter=demux_chromecast")
+        self._instance = vlc.Instance(*instance_opts)
+        self._mediaplayer = self._instance.media_player_new()
+        vlc_events = self._mediaplayer.event_manager()
+        vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
+        vlc_events.event_attach(vlc.EventType.MediaPlayerEncounteredError, juggler.song_finished, 1)
+        self._playingDubstep = False
+        self._shouldPlayDubstep = (random.randint(0, 1) == 1)
         self.play_fallback()
 
-    def handleDubstep(self):
+    def release(self):
+        self._mediaplayer.stop()
+        self._instance.release()
+
+    def _handleDubstep(self):
         self._playingDubstep = False
-        self._dubstepPosition=[random.randint(0,2),random.random()]
         self._shouldPlayDubstep = not self._shouldPlayDubstep
 
-    def play(self, filename, path):
-        self.handleDubstep()
-        print("Now playing: "+filename)
-        self.media = self.instance.media_new(path)
-        self.mediaplayer.set_media(self.media)
-        self.mediaplayer.play()
+    def _get_link_url(self, link):
+        ydl_opts = {
+            'quiet': True,
+            'format': 'bestaudio/best'
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(link, download=False)
+            return info_dict.get("url", None)
+
+    def _play_mrl(self, mrl):
+       self._mediaplayer.set_mrl(mrl, *self._media_opts)
+       self._mediaplayer.play()
+
+    def play(self, track):
+        try:
+            self._handleDubstep()
+            print("Now playing: "+track['filename'])
+            path = track['path'] if 'path' in track else self._get_link_url(track['mrl'])
+            self._play_mrl(path)
+        except Exception as err:
+            print(err)
+            self._juggler.song_finished()
+
+    def pause(self):
+        self._mediaplayer.pause()
 
     def scratch(self):
-        self.handleDubstep()
-        self.mediaplayer.set_media(self._scratch)
-        self.mediaplayer.play()
+        self._handleDubstep()
+        self._play_mrl(self.SCRATCH)
 
     def get_position(self):
-        return self.mediaplayer.get_position()
+        return self._mediaplayer.get_position()
 
     def play_fallback(self):
-        if(self._shouldPlayDubstep):
-            if(self._playingDubstep):
-                self._dubstepPosition[0]=(self._dubstepPosition[0]+1)%len(self._dubstep)
-                self._dubstepPosition[1]=0
-            print("Now playing: Dubstep")
-            self._playingDubstep = True;
-            ydl_opts = {
-            'quiet': "True",
-            'format': 'bestaudio/best'}
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(self._dubstep[self._dubstepPosition[0]], download=False)
-                url = info_dict.get("url", None)
-            self.media = self.instance.media_new(url)
-            self.mediaplayer.set_media(self.media)
-            self.mediaplayer.play()
-            self.mediaplayer.set_position(self._dubstepPosition[1])
-        else:
-            print("Now playing: Slay radio")
-            self.mediaplayer.set_media(self._fallback)
-            self.mediaplayer.play()
+        try:
+            if self._shouldPlayDubstep:
+                if self._playingDubstep:
+                    self._dubstepTrack = (self._dubstepTrack + 1) % len(self.DUBSTEP)
+                    position = 0
+                else:
+                    self._dubstepTrack = random.randint(0, len(self.DUBSTEP) - 1)
+                    position = random.random()
+                self._playingDubstep = True
+                print("Now playing: Dubstep")
+                url = self._get_link_url(self.DUBSTEP[self._dubstepTrack])
+                self._play_mrl(url)
+                self._mediaplayer.set_position(position)
+            else:
+                print("Now playing: Slay radio")
+                self._play_mrl(self.SLAYRADIO)
+        except Exception as err:
+            print(err)
+            self._juggler.song_finished()

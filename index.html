@@ -3,6 +3,15 @@
 <head>
   <title>Deeshu mp3 printer</title>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url("favicons/apple-touch-icon.png") }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_url("favicons/favicon-32x32.png") }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ static_url("favicons/favicon-16x16.png") }}">
+  <link rel="manifest" href="{{ static_url("favicons/site.webmanifest") }}">
+  <link rel="shortcut icon" href="{{ static_url("favicons/favicon.ico") }}">
+  <meta name="msapplication-TileColor" content="#d0b11b">
+  <meta name="msapplication-config" content="{{ static_url("favicons/browserconfig.xml") }}">
+  <meta name="theme-color" content="#d0b11b">
   <style type="text/css">
   html {
     overflow-y: auto;
@@ -11,29 +20,100 @@
   .child-elements {
     pointer-events: none;
   }
-  a{
+  a {
     pointer-events: auto;
   }
-  #nickname{
-    pointer-events: auto;
 
-    font-family:Arial, Helvetica, sans-serif;
-    color:#D0B11B;
-    font-size:12px;
-    text-shadow: 1px 1px 0px #5a4d0c;
-    background:#222;
-    border:#D0B11B 1px solid;
+  #logo, #page_title {
+    display: inline-block;
+    vertical-align: middle;
+  }
+  #logo {
+    width: 32px;
+    height: 32px;
+  }
 
+  #inputs {
     margin-bottom: 2em;
+  }
+  #inputs p {
+    margin: 0.5em;
+  }
+  #inputs label, #inputs input, #inputs button {
+    display: inline-block;
+    vertical-align: middle;
+    pointer-events: auto;
+  }
+  #inputs input, #inputs button {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
 
-    -moz-border-radius:3px;
-    -webkit-border-radius:3px;
-    border-radius:3px;
+    border: #D0B11B 1px solid;
+
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
 
     -moz-box-shadow: 0px 0px 3px 0px #D0B11B;
     -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
     text-align: center;
+
+    margin: 0.25em;
+  }
+  #inputs input {
+    color: #D0B11B;
+    text-shadow: 1px 1px 1px #000;
+    background: #222;
+  }
+  #inputs button {
+    background: #D0B11B;
+    color: #222;
+    text-shadow: 1px 1px 1px #000;
+    cursor: pointer;
+  }
+  #inputs #file_selector {
+    display: none;
+  }
+  #inputs #upload_hint {
+    font-size: 0.8em;
+    color: #5a4d0c;
+  }
+
+  #connection_details {
+    color: #D01B1B;
+    margin-bottom: 1em;
+  }
+
+  #errors p {
+    margin: 0;
+  }
+
+  #errors div {
+    display: inline-block;
+    padding: 0.25em;
+
+    text-align: left;
+
+    border: #D01B1B 1px solid;
+
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+
+    -moz-box-shadow: 0px 0px 3px 0px #D01B1B;
+    -webkit-box-shadow: 0px 0px 3px 0px #D01B1B;
+    box-shadow: 0px 0px 3px 0px #D01B1B;
+
+    margin: 0.25em 0;
+  }
+
+  #errors div::before {
+    content: 'Error: ';
+    font-weight: bold;
+  }
+  #errors div:empty::after {
+    content: 'Unknown error.';
   }
 
   #foot{
@@ -41,14 +121,15 @@
   }
 
   body {
+    font-family: Arial, Helvetica, sans-serif;
     text-align: center;
     margin: 0px;
     width: 100%;
-    box-shadow:inset 1px 1px 40px 1px rgba(0,0,0,.45);
-    background:#000;
-    color:#D0B11B;
-    background-size:cover;
-    overflow:hidden;
+    box-shadow: inset 1px 1px 40px 1px rgba(0,0,0,.45);
+    background: #000;
+    color: #D0B11B;
+    background-size: cover;
+    overflow: hidden;
     /*Below is footer magic*/
     display: flex;
     min-height: 100vh;
@@ -65,8 +146,8 @@
     display: none;
     content: "";
     position: fixed;
-    background:rgba(0,0,0,.75);
-    text-align:center;
+    background: rgba(0,0,0,.75);
+    text-align: center;
     font-weight: bold;
     text-align: center;
     color: #D0B11B;
@@ -94,10 +175,11 @@
   <link rel="stylesheet" type="text/css" href="{{ static_url("progress.css") }}">
   <script src="http://code.jquery.com/jquery.min.js"></script>
   <script src="{{ static_url("cookie.js") }}"></script>
-  <script>
+  <script type="text/javascript">
+  var myaddress = null;
 
   function disclaimer(){
-    $("#disclaimer").text(cookies[cookieindex]);
+    $('#disclaimer').text(cookies[cookieindex]);
     cookieindex++;
     cookieindex%=cookies.length;
   }
@@ -105,201 +187,329 @@
   function addTable(list, position) {
     var table = $('<table></table>').addClass('printtable');
     var headerRow = $('<tr></tr>');
-    var headers = ['File','Progress','User', 'Prio'];
-    for(i=0; i<headers.length; i++){
+    var headers = ['Track','Progress','User', 'Prio'];
+    for (var i=0; i<headers.length; i++){
       var header = $('<th></th>').text(headers[i]);
       headerRow.append(header);
     }
     table.append(headerRow);
 
-    for(i=0; i<list.length; i++){
+    for (var i=0; i<list.length; i++){
       var curr = list[i];
-      var row = $('<tr></tr>');
-      var prefix = $('<code></code>');
-      if (curr['nick'] == $('#nickname').val() ){
-        prefix.append("[")
-        $('<a>',{
+      var row = $('<tr></tr>')
+        .appendTo(table);
+      var nameCell = $('<td></td>')
+        .appendTo(row);
+      if (curr['address'] == myaddress){
+        var prefix = $('<code></code>');
+        prefix.append('[');
+        prefix.append($('<a></a>', {
           text: 'X',
-          mrl: curr['mrl'].toString(),
           title: 'Cancel song',
           href: '#',
+          data: { id: curr['id'] },
           click: function(event) {
             event.preventDefault();
             var skipMessage={
-            'type':'skip',
-            'mrl': $(event.target).attr('mrl')
+              'type': 'skip',
+              'id': $(event.target).data('id')
             };
-            ws.send(JSON.stringify(skipMessage));
+            sendWS(JSON.stringify(skipMessage));
           }
-        }).appendTo(prefix);
-        prefix.append("]")
+        }));
+        prefix.append(']');
+        nameCell.append(prefix);
+        nameCell.append('\u00A0'); // &nbsp;
+      }
+      nameCell.append($('<a></a>', {
+        target: '_blank',
+        href: 'download/'+encodeURIComponent(curr['id']),
+        text: curr['filename']
+      }));
 
+      var meterCell = $('<td></td>')
+        .appendTo(row);
+      var meter = $('<div></div>', { class: 'meter' })
+        .appendTo(meterCell);
+      if (i == 0) {
+        meter.append($('<span></span>', {
+          id: 'progress',
+          css: { width: (position*100)+'%'}
+        }));
       }
-      var contents = [
-        ' <a target="_blank" href="'+encodeURI(curr['mrl'])+'"download="'+curr['filename']+'">'
-        +curr['filename']+"</a>",
-        "<div class='meter'><span id='p"+i+"' style='width: 0%'></span></div>",
-        curr['nick']+"("+curr['address']+")",
-        curr['prio']
-      ]
-      for(o=0; o<contents.length; o++){
-        var cell = $('<td></td>').html(contents[o]);
-        if(o == 0){
-          cell.prepend(prefix);
-        }
-        row.append(cell);
-      }
-      table.append(row);
+
+      row.append($('<td></td>', {
+        text: curr['nick']+'\u00A0('+curr['address']+')'
+      }));
+
+      row.append($('<td></td>', {
+        text: curr['prio']
+      }));
     }
 
-    $('#printlist').html(table).delay(5).promise().done(
-        function() {
-          $("#p0").css({width:position*100+"%"});
-          $('#printlist').fadeTo(400, 1);
-        });
+    $('#printlist').html(table).delay(1).promise().done(function() {
+      $('#printlist').fadeTo(400, 1);
+    });
   }
 
   // log function
   log = function(data){
-    $("div#terminal").prepend("</br>" +data);
+    $('div#terminal').prepend('<br/>' +data);
     console.log(data);
   };
 
-  var unfading = false;
-  var child = false;
-  var lastcancel = 0;
+  var lastDragTarget = null;
+  var overlayTimeout = null;
 
   function FileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
-    if(e.type == "dragover"){
-      $("#overlay").fadeIn(150);
-      lastcancel = e.timeStamp;
-      unfading = false
-    } else if (e.type == "dragleave" && child == false){
-      unfading = true
-      setTimeout(function(){
-        if(lastcancel < e.timeStamp && unfading && !child){
-          unfading = false;
-          $("#overlay").fadeOut(150);
+    var overlay = $('#overlay');
+    if(e.type == 'dragover'){
+      lastDragTarget = e.target;
+      if(!overlay.is(':visible')) {
+        overlay.stop(true).fadeIn('fast');
+      } else if(overlayTimeout) {
+        clearTimeout(overlayTimeout);
+      }
+    } else if(e.type == 'dragleave' && $(e.target).is(lastDragTarget)){
+      clearTimeout(overlayTimeout);
+      overlayTimeout = setTimeout(function() {
+        if(overlay.is(':visible')) {
+          overlay.stop(true).fadeOut('fast');
         }
-      }, 400);
+      }, 10);
     }
   }
 
-  function ChildFileDragHover(e) {
+  function FileDropHandler(e) {
     e.stopPropagation();
     e.preventDefault();
-    lastcancel = e.timeStamp;
-    unfading = false
-    $("#overlay").fadeIn(0);
-    if(e.type == "dragover"){
-      cildd = true;
-    } else if (e.type == "dragleave"){
-      child = false;
+    $('#overlay').fadeOut('fast');
+    var dt = e.originalEvent.dataTransfer;
+    if (dt && dt.items) {
+      var items = dt.items;
+      if (items.length < 1) {
+        addError('You seem to have dragged nothing, please try again.');
+      }
+      var uploads = [];
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.kind == 'file') {
+          if (!AddFile(item.getAsFile(), uploads)) {
+            return false;
+          }
+        } else if (item.kind == 'string' && item.type == 'text/plain') {
+          var lines = dt.getData('text/plain').split('\n');
+          for (var l = 0; l < lines.length; l++) {
+            if (!AddLink(lines[l], uploads)) {
+              return false;
+            }
+          }
+        }
+      }
+      UploadTracks(uploads);
+    }
+    else {
+      addError('Please upgrade your browser...');
     }
   }
 
-  function FileSelectHandler(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    $("#overlay").fadeOut(150);
-    unfading = false;
-    lastcancel = e.timeStamp;
-    var files = e.target.files || e.originalEvent.dataTransfer.files;
-    if (files.length == 0){
-      ParseLink(e.originalEvent.dataTransfer.getData('Text'));
+  function FileInputHandler(files) {
+    var uploads = [];
+    for (var i = 0; i < files.length; i++) {
+      if (!AddFile(files[i], uploads)) {
+        return false;
+      }
     }
-    else if (files.length > 3) {
-      alert("Please, no more than 3 at a time.");
+    UploadTracks(uploads);
+  }
+
+  function LinkInputHandler(link) {
+    var uploads = [];
+    if (!AddLink(link, uploads)) {
+      return false;
     }
-    else{
-      for (var i = 0, f; f = files[i]; i++) {
-        ParseFile(f);
+    UploadTracks(uploads);
+  }
+
+  function AddFile(file, uploads) {
+    if (file.size > 0) {
+      uploads.push({ 'type': 'file', 'file': file });
+    }
+    return true;
+  }
+
+  function AddLink(link, uploads) {
+    var re_host = window.location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    var host_match = new RegExp('^https?://' + re_host);
+    if (!link.match(host_match)) {
+      uploads.push({ 'type': 'link', 'link': link });
+    }
+    return true;
+  }
+
+  function UploadId(nick, name) {
+    return nick + ':' + name + ':' + ((new Date()).getTime() + Math.random());
+  }
+
+  function UploadTracks(uploads) {
+    if (uploads.length > 10) {
+      addError('Please, no more than 10 tracks at a time.');
+      return false;
+    }
+    var nick = $('#nickname').val();
+    var last_id = null;
+    for (var i = 0; i < uploads.length; i++) {
+      var upload = uploads[i];
+      switch(upload.type) {
+      case 'file':
+        var id = UploadId(nick, upload.file.name);
+        var req = new XMLHttpRequest();
+        req.onreadystatechange = function (aEvt) {
+          if (req.readyState == 4 && req.status != 200) {
+            addError(req.responseText);
+          }
+        };
+        req.open('put', 'upload', true)
+        req.setRequestHeader('Filename', upload.file.name);
+        req.setRequestHeader('Nick', nick);
+        req.setRequestHeader('Upload-Id', id);
+        req.setRequestHeader('Content-Type', upload.file.type);
+        if (last_id) {
+          req.setRequestHeader('Parent-Id', last_id);
+        }
+        req.send(upload.file);
+        last_id = id;
+        break;
+      case 'link':
+        var id = UploadId(nick, upload.link);
+        var linkToUpload = {
+          'type': 'link',
+          'id': id,
+          'nick': nick,
+          'link': upload.link
+        };
+        if (last_id) {
+          linkToUpload.parent = last_id;
+        }
+        sendWS(JSON.stringify(linkToUpload));
+        id = last_id;
+        break;
       }
     }
   }
 
-  function ParseFile(file) {
-    if(file.type.startsWith("audio")){
-      var req = new XMLHttpRequest();
-      req.onreadystatechange = function (aEvt) {
-        if (req.readyState == 4 && req.status == 200) {
-        }
-      };
-      req.open('post', 'upload', true)
-      req.setRequestHeader("filename", file.name);
-      req.setRequestHeader("nick", $('#nickname').val() );
-      req.send(file);
-    }
-    else {
-      alert("Please, only audio files.");
-    }
+  function addError(msg) {
+    var line = $('<p></p>')
+      .prependTo($('#errors'));
+    var error = $('<div></div>')
+      .text(msg)
+      .hide()
+      .appendTo(line);
+    error.fadeIn('slow');
+    setTimeout(function(){
+      line.fadeOut('slow', function() { line.remove(); });
+    }, 15000);
   }
 
-  function ParseLink(link) {
-    linkToUpload={
-      "type":"link",
-      "nick":$('#nickname').val(),
-      "link":link
-    };
-    ws.send(JSON.stringify(linkToUpload));
-  }
-
-  // begin page load code
+  // Websocket stuff
   var ws;
-  $(document).ready(function () {
-    $("div#printlist").hide();
-    $("#connection").show();
-    $('#nickname').hide();
-    nick = getCookie("nick");
-    if (nick != null){
-      $('#nickname').val(nick);
-    }
-    $('#nickname').on("propertychange change keyup paste input", function(evt) {
-      setCookie("nick", $('#nickname').val())
-    });
-    setInterval(disclaimer, 120);
-
-    // Websocket stuff
-    ws = new WebSocket("ws://" + window.location.host + "/ws");
+  var wsQueue = [];
+  function connectWS() {
+    console.log('Connecting to WebSocket...');
+    ws = new WebSocket('ws://' + window.location.host + '/ws');
     ws.onmessage = function(evt) {
       var message = JSON.parse(evt.data);
       switch(message.type){
-        case 'fallback':
-        $("#printlist").html(message.filename);
+      case 'address':
+        myaddress = message.address;
         break;
-        case 'list':
-        $("div#printlist").fadeTo(400, 0).promise().done(
+      case 'fallback':
+        $('#printlist').text(message.filename);
+        break;
+      case 'list':
+        $('div#printlist').fadeTo(400, 0).promise().done(
             function() {
               addTable(message.list, message.position);
             });
-
         break;
-        case 'progress':
-        $("#p0").animate({width:message.position*100+"%"}, 100);
+      case 'progress':
+        $('#progress').animate({width: message.position*100+'%'}, 100);
+        break;
+      case 'error':
+        addError(message.message);
+        break;
+      default:
+        console.warn('Unknown message type: ' + message.type);
         break;
       }
     };
 
     ws.onclose = function(evt) {
-      $("div#printlist").fadeOut("slow");
-      $('#nickname').hide("slow");
-      $("#connection").show("slow");
+      console.log('WebSocket connection closed, reconnecting in 10 seconds.');
+      $('div#printlist').fadeOut('slow');
+      $('#inputs').fadeOut('slow');
+      $('#connection').fadeIn('slow');
+
+      setTimeout(connectWS, 10000);
     };
 
     ws.onopen = function(evt) {
-      $("div#printlist").fadeIn("slow");
-      $('#nickname').show("slow");
-      $("#connection").hide("slow");
-    };
+      console.log('WebSocket connection opened.');
 
-    $("html").on("dragover", FileDragHover);
-    $("html").on("dragleave", FileDragHover);
-    $("html").on("drop", FileSelectHandler);
-    $(".child-elements").on("dragover", ChildFileDragHover);
-    $(".child-elements").on("dragleave", ChildFileDragHover);
-    $(".child-elements").on("drop", FileSelectHandler);
+      $('div#printlist').fadeIn('slow');
+      $('#inputs').fadeIn('slow');
+      $('#connection').fadeOut('slow');
+
+      var queue = wsQueue;
+      wsQueue = [];
+      for (var i = 0; i < queue.length; i++) {
+        sendWS(queue[i]);
+      }
+    };
+  }
+  function sendWS(message) {
+    if (ws.readyState == WebSocket.OPEN) {
+      ws.send(message);
+    } else {
+      wsQueue.push(message);
+    }
+  }
+
+
+  // begin page load code
+  $(document).ready(function () {
+    $('div#printlist').hide();
+    $('#connection').show();
+    $('#inputs').hide();
+
+    var nick = getCookie('nick');
+    if (nick != null){
+      $('#nickname').val(nick);
+    }
+    $('#nickname').on('propertychange change keyup paste input', function(evt) {
+      setCookie('nick', $('#nickname').val())
+    });
+
+    var selector = $('#file_selector');
+    $('#upload_file').click(function() {
+      selector.click();
+    });
+    selector.on('change', function() {
+      FileInputHandler(selector.get(0).files);
+    })
+    $('#upload_link').click(function() {
+      LinkInputHandler(prompt('Link URL:'));
+    });
+
+    setInterval(disclaimer, 120);
+
+    connectWS();
+
+    $('html').on('dragover', FileDragHover);
+    $('html').on('dragleave', FileDragHover);
+    $('html').on('drop', FileDropHandler);
   });
   </script>
 </head>
@@ -307,14 +517,31 @@
 <body>
   <div id="overlay" class="child-elements">
     <p>
-      Drop files or youtube links here to upload!
+      Drop files or links here to upload!
     </p>
   </div>
-  <section id = "page_body" class="child-elements">
-    <h1>Welcome to the Deeshu mp3 printer</h1>
-    <input id="nickname" type ="text" placeholder="Name goes here...">
+  <section id="page_body" class="child-elements">
+    <h1>
+      <img src="{{ static_url("favicons/favicon.svg") }}" id="logo">
+      <span id="page_title">Welcome to the Deeshu mp3 printer</span>
+    </h1>
+    <div id="inputs">
+      <p>
+        <label for="nickname">Name:</label>
+        <input id="nickname" type="text" placeholder="Name goes here...">
+      </p>
+      <p>
+        <input id="file_selector" type="file" multiple>
+        <label>Upload:</label>
+        <button id="upload_file">File(s)</button>
+        <button id="upload_link">Link</button>
+        <br />
+        <span id="upload_hint">(Or just drag files and/or links into this window)</span>
+      </p>
+    </div>
     <div id="connection_details">
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
+      <div id="errors"></div>
     </div>
     <div id ="printlist">
     </div>
