@@ -28,12 +28,13 @@ class mp3Juggler:
 
     def start(self):
         if not self._running:
-            self._running = True
             self._player = Player(self);
             self._next_thread = Thread(target=self.play_next, args=())
-            self._next_thread.start()
             self._progress_thread = Thread(target=self.time_change, args=())
+            self._running = True
+            self._next_thread.start()
             self._progress_thread.start()
+            self._clients.message_clients(self.get_list())
 
     def stop(self):
         if self._running:
