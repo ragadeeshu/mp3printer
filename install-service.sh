@@ -51,15 +51,28 @@ while [ -n "$1" ]; do
   esac
 done
 
+args=
+for x in "$@"; do
+  case "$x" in
+    *\ *|*\	*)
+      x="\"$(printf "%s\n" "$x" | sed -e 's/\\/\\\\\\\\/g' -e 's/"/\\"/g')\""
+      ;;
+  esac
+  args="$args $x"
+done
+
 echo "# Will install service file for running mp3 printer with these settings:"
 echo "  - Working dir: $dir"
 echo "  - User: $user ($uid)"
 echo "  - Group: $group ($gid)"
-echo "  - Arguments: ${@:-(none)}"
+echo "  - Arguments:${args:- (none)}"
 echo
 printf "Continue? [y/N] "
 read inp
 [ "$inp" = "y" -o "$inp" = "Y" ] || exit 1
+
+echo "# Stopping any running instance of the service..."
+sudo systemctl stop mp3printer.service > /dev/null 2>&1 || :
 
 echo "# Installing service file..."
 sudo tee /etc/systemd/system/mp3printer.service > /dev/null << EOF
@@ -71,7 +84,7 @@ Description=mp3 Printer
 User=$uid
 Group=$gid
 WorkingDirectory=$dir
-ExecStart=$(which python3) main.py $@
+ExecStart=$(which python3) main.py$args
 Sockets=mp3printer.socket
 StandardInput=socket
 StandardOutput=journal
