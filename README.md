@@ -5,3 +5,5 @@ You need python3, vlc, vlc bindings for python, yt-dlp and tornado, optionally p
 Running `./startup.sh --help` will show a list of possible options.
 
 Record scratch sound is by "Raccoonanimator" and can be found here: https://freesound.org/people/Raccoonanimator/sounds/160907/
+
+Icon is a combination of two icons from the [Tango Desktop Project](http://tango.freedesktop.org/).
