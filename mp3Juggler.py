@@ -21,10 +21,11 @@ class mp3Juggler:
         if song is None:
             song = self._songlist[i]
         self._counts[song['address']]-= 1
-        try:
-            os.remove(song['path'])
-        except:
-            pass
+        if 'handle' in song:
+            try:
+                song['handle'].close()
+            except:
+                pass
         del(self._songlist[i])
 
     def start(self):
@@ -74,21 +75,13 @@ class mp3Juggler:
                     if 'upload_id' in song and song['upload_id'] == parent_id:
                         break
                 else:  # Not found
-                    remove = True
-                    try:
-                        if not parent_id in self._waiting:
-                            self._waiting[parent_id] = [Condition(self.lock), False]
-                        wait = self._waiting[parent_id]
-                        if wait[0].wait(30) and wait[1]:
-                            remove = False
-                        else:
-                            return False
-                    finally:
-                        if remove:
-                            try:
-                                os.remove(infile['path'])
-                            except:
-                                pass
+                    if not parent_id in self._waiting:
+                        self._waiting[parent_id] = [Condition(self.lock), False]
+                    wait = self._waiting[parent_id]
+                    if not (wait[0].wait(30) and wait[1]):
+                        if 'handle' in infile:
+                            infile['handle'].close()
+                        return False
 
             infile['prio'] = self._counts.get(infile['address'], 0) + 1
             self._counts[infile['address']] = self._counts.get(infile['address'], 0) + 1

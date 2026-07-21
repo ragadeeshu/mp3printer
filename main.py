@@ -63,7 +63,7 @@ class Upload(tornado.web.RequestHandler):
                 raise Exception('Only audio or video files, please')
             filename = self.request.headers.get('Filename')
             extn = os.path.splitext(filename)[-1]
-            fd, cachename = tempfile.mkstemp(prefix=filename, suffix=extn)
+            tf = tempfile.NamedTemporaryFile(prefix=filename, suffix=extn)
             self.infile = {
                 'type': 'file',
                 'upload_id': self.request.headers.get('Upload-Id'),
@@ -71,10 +71,10 @@ class Upload(tornado.web.RequestHandler):
                 'filename': filename,
                 'extn': extn,
                 'address': remote_ip(self.request),
-                'mrl': cachename,
-                'path': cachename
+                'mrl': tf.name,
+                'handle': tf
             }
-            self.fh = os.fdopen(fd, 'wb')
+            self.fh = tf
         except Exception as err:
             self.error = err
 
@@ -89,7 +89,7 @@ class Upload(tornado.web.RequestHandler):
         try:
             if self.error is not None:
                 raise self.error
-            self.fh.close()
+            self.fh.flush()
             juggler.juggle(self.infile, self.request.headers.get('Parent-Id'))
             self.done = True
             self.finish()
@@ -103,10 +103,6 @@ class Upload(tornado.web.RequestHandler):
         if not self.done:
             try:
                 self.fh.close()
-            except:
-                pass
-            try:
-                os.remove(self.infile['path'])
             except:
                 pass
             self.done = True

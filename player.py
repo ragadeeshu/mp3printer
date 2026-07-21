@@ -55,8 +55,10 @@ class Player:
         try:
             self._handleDubstep()
             print("Now playing: "+track['filename'])
-            path = track['path'] if 'path' in track else self._get_link_url(track['mrl'])
-            self._play_mrl(path)
+            mrl = track['mrl']
+            if track['type'] == 'link':
+                mrl = self._get_link_url(mrl)
+            self._play_mrl(mrl)
         except Exception as err:
             print(err)
             self._juggler.song_finished()
