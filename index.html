@@ -1,7 +1,7 @@
 <!-- \<!doctype html> -->
 <html>
 <head>
-  <title>Deeshu mp3 printer</title>
+  <title>mp3 printer</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url("favicons/apple-touch-icon.png") }}">
@@ -24,25 +24,38 @@
     pointer-events: auto;
   }
 
-  #logo, #page_title {
+  #page_title h1 {
+    display: inline-block;
+    margin-top: 0;
+    padding: 0 1em 0.25em;
+    border-bottom: 1px solid #5a4d0c;
+  }
+  #page_title h1 * {
     display: inline-block;
     vertical-align: middle;
+    font-size: 24px;
   }
-  #logo {
-    width: 32px;
-    height: 32px;
+  #page_title h1 img {
+    width: 24px;
+    height: 24px;
+    margin: 0 0.5em
   }
 
   #inputs {
-    margin-bottom: 2em;
-  }
-  #inputs p {
-    margin: 0.5em;
+    margin-bottom: 1em;
+    display: inline-grid;
+    grid-template-columns: repeat(2, max-content);
+    align-items: center;
+    gap: 0.5em 0.25em;
+    text-align: left;
   }
   #inputs label, #inputs input, #inputs button {
-    display: inline-block;
-    vertical-align: middle;
     pointer-events: auto;
+  }
+  #inputs label {
+    font-weight: bold;
+    color: #806d11;
+    text-align: right;
   }
   #inputs input, #inputs button {
     font-family: Arial, Helvetica, sans-serif;
@@ -57,9 +70,9 @@
     -moz-box-shadow: 0px 0px 3px 0px #D0B11B;
     -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
-    text-align: center;
 
     margin: 0.25em;
+    padding: 0.25em;
   }
   #inputs input {
     color: #D0B11B;
@@ -71,6 +84,13 @@
     color: #222;
     text-shadow: 1px 1px 1px #000;
     cursor: pointer;
+    text-align: center;
+  }
+  #inputs button:hover {
+    background: #f7d321;
+  }
+  #inputs button:active {
+    background: #806d11;
   }
   #inputs #file_selector {
     display: none;
@@ -165,7 +185,7 @@
   }
 
   #page_body {
-    padding: 2em;
+    padding: 1em;
     /*Footer magic*/
     flex: 1;
   }
@@ -521,23 +541,23 @@
     </p>
   </div>
   <section id="page_body" class="child-elements">
-    <h1>
-      <img src="{{ static_url("favicons/favicon.svg") }}" id="logo">
-      <span id="page_title">Welcome to the Deeshu mp3 printer</span>
-    </h1>
+    <div id="page_title">
+      <h1>
+        <img src="{{ static_url("favicons/favicon.svg") }}">
+        <div>mp3 printer</div>
+        <img src="{{ static_url("favicons/favicon.svg") }}">
+      </h1>
+    </div>
     <div id="inputs">
-      <p>
-        <label for="nickname">Name:</label>
-        <input id="nickname" type="text" placeholder="Name goes here...">
-      </p>
-      <p>
+      <label for="nickname">Name</label>
+      <input id="nickname" type="text" placeholder="Your name here...">
+      <label>Add</label>
+      <div>
         <input id="file_selector" type="file" multiple>
-        <label>Upload:</label>
         <button id="upload_file">File(s)</button>
         <button id="upload_link">Link</button>
-        <br />
-        <span id="upload_hint">(Or just drag files and/or links into this window)</span>
-      </p>
+        <span id="upload_hint">(Or drag files/links into this window)</span>
+      </div>
     </div>
     <div id="connection_details">
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
