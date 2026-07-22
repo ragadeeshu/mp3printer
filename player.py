@@ -40,6 +40,7 @@ class Player:
 
     def _get_link_url(self, link):
         ydl_opts = {
+            'cookies': 'cookies.txt',
             'quiet': True,
             'format': 'bestaudio/best'
         }

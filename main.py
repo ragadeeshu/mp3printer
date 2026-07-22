@@ -157,6 +157,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                 if not link.startswith('http://') and not link.startswith('https://'):
                     raise Exception('Only web links, please')
                 ydl_opts = {
+                    'cookies': 'cookies.txt',
                     'quiet': True,
                     'format': 'bestaudio/best'
                 }
