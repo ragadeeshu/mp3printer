@@ -107,6 +107,7 @@ SocketUser=$uid
 SocketGroup=$gid
 SocketMode=$stdin_mode
 RemoveOnStop=yes
+ExecStartPre=-/bin/rm -f $dir/service.stdin
 EOF
 
 sudo systemctl daemon-reload
