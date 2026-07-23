@@ -1,3 +1,5 @@
+# pyright: strict
+
 import argparse
 import json
 import os
@@ -7,6 +9,7 @@ import signal
 import tempfile
 import threading
 import urllib.parse
+from typing import IO, Any, Callable
 
 import tornado.httpserver
 import tornado.ioloop
@@ -21,8 +24,9 @@ except ModuleNotFoundError:
     pychromecast = None
 
 # local libs
-from connections import Connections
-from mp3Juggler import mp3Juggler
+import connections
+import mp3Juggler
+import player
 
 loop = None
 clients = None
@@ -33,19 +37,19 @@ ANSI_ESCAPE = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]")
 ERROR_PREFIX = re.compile(r"^[Ee][Rr][Rr]([Oo][Rr])?:\s*")
 
 
-def error_message(err):
+def error_message(err: Any):
     return ERROR_PREFIX.sub("", ANSI_ESCAPE.sub("", str(err)))
 
 
-def actual_remote_ip(request):
-    return request.remote_ip
+def actual_remote_ip(request: tornado.httpserver.HTTPRequest):
+    return str(request.remote_ip) if request.remote_ip else None
 
 
-def forwarded_remote_ip(request):
+def forwarded_remote_ip(request: tornado.httpserver.HTTPRequest):
     return request.headers.get("X-Forwarded-For")
 
 
-remote_ip = actual_remote_ip
+remote_ip: Callable[[tornado.httpserver.HTTPRequest], str | None] = actual_remote_ip
 
 
 class IndexHandler(tornado.web.RequestHandler):
@@ -56,9 +60,9 @@ class IndexHandler(tornado.web.RequestHandler):
 @tornado.web.stream_request_body
 class Upload(tornado.web.RequestHandler):
     def prepare(self):
-        self.fh = None
-        self.infile = None
-        self.error = None
+        self.fh: IO[bytes] | None = None
+        self.metadata: mp3Juggler.FileTrackInput | None = None
+        self.error: Exception | None = None
         self.done = False
         try:
             free = shutil.disk_usage(tempfile.gettempdir()).free
@@ -69,24 +73,30 @@ class Upload(tornado.web.RequestHandler):
                 "video/"
             ):
                 raise Exception("Only audio or video files, please")
-            filename = self.request.headers.get("Filename", "")
-            extn = os.path.splitext(filename)[-1]
-            tf = tempfile.NamedTemporaryFile(prefix=filename, suffix=extn)
-            self.infile = {
+            filename = self.request.headers.get("Filename")
+            if filename is not None:
+                base, extn = os.path.splitext(filename)
+            else:
+                base, extn = None, None
+            tf = tempfile.NamedTemporaryFile(
+                prefix=base, suffix=extn, delete_on_close=False
+            )
+            self.metadata = {
                 "type": "file",
                 "upload_id": self.request.headers.get("Upload-Id"),
                 "nick": self.request.headers.get("Nick"),
+                "title": filename or "Unknown",  # TODO
                 "filename": filename,
                 "extn": extn,
                 "address": remote_ip(self.request),
                 "mrl": tf.name,
-                "handle": tf,
+                "handle": tf,  # This keeps the NamedTemporaryFile in scope
             }
             self.fh = tf
         except Exception as err:
             self.error = err
 
-    def data_received(self, chunk):
+    def data_received(self, chunk: bytes):
         if self.error is None:
             try:
                 assert self.fh is not None
@@ -99,16 +109,19 @@ class Upload(tornado.web.RequestHandler):
             if self.error is not None:
                 raise self.error
             assert self.fh is not None
-            self.fh.flush()
+            self.fh.close()
             assert juggler is not None
-            juggler.juggle(self.infile, self.request.headers.get("Parent-Id"))
+            assert self.metadata is not None
+            juggler.juggle(self.metadata, self.request.headers.get("Parent-Id"))
             self.done = True
-            self.finish()
+            self.finish()  # pyright: ignore[reportUnknownMemberType]
         except Exception as err:
             print(err)
             self.clear()
             self.set_status(500)
-            self.finish(error_message(err))
+            self.finish(  # pyright: ignore[reportUnknownMemberType]
+                error_message(err),
+            )
 
     def on_finish(self):
         if not self.done:
@@ -125,39 +138,46 @@ class Upload(tornado.web.RequestHandler):
 
 
 class Download(tornado.web.RequestHandler):
-    def get(self, track_id):
+    def get(self, track_id: str):
         try:
             assert juggler is not None
-            infile = juggler.download(track_id)
-            if infile is None:
+            info = juggler.download(track_id)
+            if info is None:
                 self.set_status(404)
-                self.finish("Not found")
-                return
-            if infile["type"] == "file":
-                url_name = urllib.parse.quote(infile["filename"])
-                self.add_header(
-                    "Content-Disposition", 'attachment; filename="' + url_name + '"'
+                self.finish(  # pyright: ignore[reportUnknownMemberType]
+                    "Not found",
                 )
-                with open(infile["mrl"], "rb") as f:
+                return
+            if info["type"] == "file":
+                if info["filename"] is not None:
+                    url_name = urllib.parse.quote(info["filename"])
+                    self.add_header(
+                        "Content-Disposition", 'attachment; filename="' + url_name + '"'
+                    )
+                with open(info["mrl"], "rb") as f:
                     chunk = f.read(1048576)
                     while chunk:
-                        self.write(chunk)
+                        self.write(  # pyright: ignore[reportUnknownMemberType]
+                            chunk,
+                        )
                         chunk = f.read(1048576)
-                self.finish()
-            elif infile["type"] == "link":
-                self.redirect(infile["mrl"])
+                self.finish()  # pyright: ignore[reportUnknownMemberType]
+            elif info["type"] == "link":
+                self.redirect(info["mrl"])
             else:
-                raise Exception("Unknown type: " + infile["type"])
+                raise Exception("Unknown type: " + info["type"])
         except Exception as err:
             print(err)
             self.clear()
             self.set_status(500)
-            self.finish(error_message(err))
+            self.finish(  # pyright: ignore[reportUnknownMemberType]
+                error_message(err),
+            )
 
 
 class WSHandler(tornado.websocket.WebSocketHandler):
 
-    def open(self, *args, **kwargs):
+    def open(self, *args: str, **kwargs: str):
         assert clients is not None
         assert juggler is not None
         clients.add_connection(self)
@@ -166,12 +186,12 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         )
         self.write_message(json.dumps(juggler.get_list()))
 
-    def on_message(self, message):
+    def on_message(self, message: str | bytes):
         try:
             assert juggler is not None
             parsed_json = json.loads(message)
             if parsed_json["type"] == "link":
-                link = parsed_json["link"]
+                link = str(parsed_json["link"])
                 if not link.startswith("http://") and not link.startswith("https://"):
                     raise Exception("Only web links, please")
                 with yt_dlp.YoutubeDL(
@@ -182,20 +202,24 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                     }
                 ) as ydl:
                     info_dict = ydl.extract_info(link, download=False)
-                    title = info_dict.get("title", None)
-                infile = {
-                    "type": "link",
-                    "upload_id": parsed_json["id"],
-                    "nick": parsed_json["nick"],
-                    "filename": title,
-                    "address": remote_ip(self.request),
-                    "mrl": link,
-                }
-                parent = parsed_json["parent"] if "parent" in parsed_json else None
-                juggler.juggle(infile, parent)
+                    title = info_dict.get("title") or link
+                juggler.juggle(
+                    {
+                        "type": "link",
+                        "upload_id": (
+                            str(parsed_json["id"]) if parsed_json["id"] else None
+                        ),
+                        "nick": (
+                            str(parsed_json["nick"]) if parsed_json["nick"] else None
+                        ),
+                        "title": title,
+                        "address": remote_ip(self.request),
+                        "mrl": link,
+                    },
+                    str(parsed_json["parent"]) if "parent" in parsed_json else None,
+                )
             elif parsed_json["type"] == "skip":
-                infile = {"address": remote_ip(self.request), "id": parsed_json["id"]}
-                juggler.cancel(infile)
+                juggler.cancel(parsed_json["id"], remote_ip(self.request))
             else:
                 raise Exception("Unknown command: " + parsed_json["type"])
         except Exception as err:
@@ -210,12 +234,16 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         clients.close_connection(self)
 
 
-def start(port=80, bind=None, player_args=None):
+def start(
+    port: int = 80,
+    bind: str | None = None,
+    player_args: player.PlayerArgs | None = None,
+):
     global loop, clients, juggler, http_server
     loop = tornado.ioloop.IOLoop.current()
 
-    clients = Connections(loop)
-    juggler = mp3Juggler(clients, player_args)
+    clients = connections.Connections(loop)
+    juggler = mp3Juggler.Juggler(clients, player_args)
 
     application = tornado.web.Application(
         [
@@ -242,7 +270,9 @@ def stop():
     if loop is not None:
         # Should use add_callback_from_signal according to documentation, but it's deprecated
         # on master (since 2023-05-02), and add_callback should have the same effect since 6.0.
-        loop.add_callback(lambda: loop.stop() if loop is not None else None)
+        loop.add_callback(  # pyright: ignore[reportUnknownMemberType]
+            lambda: loop.stop() if loop is not None else None
+        )
     if http_server is not None:
         http_server.stop()
     if juggler is not None:
@@ -286,7 +316,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    player_args = {}
+    player_args: player.PlayerArgs = {}
 
     if pychromecast:
         if args.chromecast_list:
@@ -320,8 +350,8 @@ if __name__ == "__main__":
     if args.proxied:
         remote_ip = forwarded_remote_ip
 
-    def signal_handler(sig, frame):
-        print("\nSignal caught, exiting...")
+    def signal_handler(sig: int, _: Any):
+        print(f"\nSignal {sig} caught, exiting...")
         stop()
         exit(0)
 

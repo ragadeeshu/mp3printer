@@ -244,7 +244,7 @@
       nameCell.append($('<a></a>', {
         target: '_blank',
         href: 'download/'+encodeURIComponent(curr['id']),
-        text: curr['filename']
+        text: curr['title']
       }));
 
       var meterCell = $('<td></td>')
@@ -258,8 +258,11 @@
         }));
       }
 
+      var address = curr['address'] ? curr['address'] : '?';
       row.append($('<td></td>', {
-        text: curr['nick']+'\u00A0('+curr['address']+')'
+        text: (curr['nick']
+          ? curr['nick']+'\u00A0('+address+')'
+          : address)
       }));
 
       row.append($('<td></td>', {
@@ -446,7 +449,7 @@
         myaddress = message.address;
         break;
       case 'fallback':
-        $('#printlist').text(message.filename);
+        $('#printlist').text(message.description);
         break;
       case 'list':
         $('div#printlist').fadeTo(400, 0).promise().done(
