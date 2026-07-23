@@ -11,6 +11,7 @@ import threading
 import urllib.parse
 from typing import IO, Any, Callable
 
+import tinytag
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
@@ -112,6 +113,15 @@ class Upload(tornado.web.RequestHandler):
             self.fh.close()
             assert juggler is not None
             assert self.metadata is not None
+            try:
+                tags = tinytag.TinyTag.get(self.fh.name)
+                if tags.title:
+                    title = tags.title
+                    if tags.artist:
+                        title = f"{tags.artist} - {title}"
+                    self.metadata["title"] = title
+            except:
+                pass
             juggler.juggle(self.metadata, self.request.headers.get("Parent-Id"))
             self.done = True
             self.finish()  # pyright: ignore[reportUnknownMemberType]
