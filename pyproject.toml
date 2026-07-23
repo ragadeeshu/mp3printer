@@ -1,0 +1,23 @@
+[project]
+name = "mp3printer"
+version = "0.1.0"
+description = "A collaborative jukebox for (LAN) parties"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "python-vlc>=3.0.21203",
+    "tornado>=6.5.7",
+    "yt-dlp>=2026.7.4",
+]
+
+[project.optional-dependencies]
+chromecast = [
+    "pychromecast>=13.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "isort>=8.0.1",
+    "pyright>=1.1.411",
+]
