@@ -9,7 +9,7 @@ import signal
 import tempfile
 import threading
 import urllib.parse
-from typing import IO, Any, Callable
+from typing import IO, Any, Callable, cast
 
 import tinytag
 import tornado.httpserver
@@ -199,39 +199,50 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     def on_message(self, message: str | bytes):
         try:
             assert juggler is not None
-            parsed_json = json.loads(message)
-            if parsed_json["type"] == "link":
-                link = str(parsed_json["link"])
-                if not link.startswith("http://") and not link.startswith("https://"):
-                    raise Exception("Only web links, please")
-                with yt_dlp.YoutubeDL(
-                    {
-                        "cookiefile": "cookies.txt",
-                        "quiet": True,
-                        "format": "bestaudio/best",
-                    }
-                ) as ydl:
-                    info_dict = ydl.extract_info(link, download=False)
-                    title = info_dict.get("title") or link
-                juggler.juggle(
-                    {
-                        "type": "link",
-                        "upload_id": (
-                            str(parsed_json["id"]) if parsed_json["id"] else None
-                        ),
-                        "nick": (
-                            str(parsed_json["nick"]) if parsed_json["nick"] else None
-                        ),
-                        "title": title,
-                        "address": remote_ip(self.request),
-                        "mrl": link,
-                    },
-                    str(parsed_json["parent"]) if "parent" in parsed_json else None,
-                )
-            elif parsed_json["type"] == "skip":
-                juggler.cancel(parsed_json["id"], remote_ip(self.request))
-            else:
-                raise Exception("Unknown command: " + parsed_json["type"])
+            parsed_json = cast(dict[str, str], json.loads(message))
+            assert isinstance(
+                parsed_json, dict
+            ), f"Expected dict, got {type(parsed_json).__name__}"
+            match parsed_json.get("type"):
+                case "link":
+                    link = str(parsed_json.get("link", ""))
+                    if not link.startswith("http://") and not link.startswith(
+                        "https://"
+                    ):
+                        raise Exception("Only web links, please")
+                    with yt_dlp.YoutubeDL(
+                        {
+                            "cookiefile": "cookies.txt",
+                            "quiet": True,
+                            "format": "bestaudio/best",
+                        }
+                    ) as ydl:
+                        info_dict = ydl.extract_info(link, download=False)
+                        title = info_dict.get("title") or link
+
+                    def _safe_val(key: str):
+                        val = parsed_json.get(key)
+                        if val is None:
+                            return None
+                        return str(val)
+
+                    juggler.juggle(
+                        {
+                            "type": "link",
+                            "upload_id": _safe_val("upload_id"),
+                            "nick": _safe_val("nick"),
+                            "title": title,
+                            "address": remote_ip(self.request),
+                            "mrl": link,
+                        },
+                        _safe_val("parent"),
+                    )
+                case "skip":
+                    juggler.cancel(
+                        parsed_json.get("id", "ERR"), remote_ip(self.request)
+                    )
+                case other:
+                    raise Exception(f"Unknown command: {other}")
         except Exception as err:
             print(err)
             self.write_message(
