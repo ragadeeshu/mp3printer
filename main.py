@@ -272,11 +272,15 @@ if __name__ == "__main__":
 
     if HAS_PYCHROMECAST:
         if args.chromecast_list:
-            print('Available Chromecast targets:')
+            print('Scanning for Chromecasts...')
             services, browser = pychromecast.discovery.discover_chromecasts()
             pychromecast.discovery.stop_discovery(browser)
-            for service in services:
-                print('* \"%s\"' % service.friendly_name)
+            if services:
+                print('Available Chromecast targets:')
+                for service in services:
+                    print('* \"%s\"' % service.friendly_name)
+            else:
+                print('No Chromecast targets found.')
             exit(0)
 
         if args.chromecast is not None:
