@@ -1,5 +1,6 @@
-from threading import Lock
 import json
+from threading import Lock
+
 
 class Connections:
     def __init__(self, ioloop):

@@ -1,6 +1,13 @@
-import vlc
 import random
+from typing import NotRequired, TypedDict, cast
+
+import vlc
 import yt_dlp
+
+
+class PlayerArgs(TypedDict):
+    chromecast: NotRequired[tuple[str, int]]
+
 
 class Player:
 
@@ -8,26 +15,34 @@ class Player:
     DUBSTEP = [
         "https://www.youtube.com/watch?v=dLyH94jNau0",
         "https://www.youtube.com/watch?v=RRucF7ffPRE",
-        "https://www.youtube.com/watch?v=nXaMKZApYDM"
+        "https://www.youtube.com/watch?v=nXaMKZApYDM",
     ]
     SCRATCH = "shortscratch.wav"
 
-    def __init__(self, juggler, chromecast=None):
+    def __init__(self, juggler, args: PlayerArgs):
         self._juggler = juggler
         instance_opts = ["--no-video"]
         self._media_opts = []
-        if chromecast is not None:
+        if chromecast := args.get("chromecast"):
             instance_opts.append("--no-sout-video")
             # These options don't work as instance options, for some reason...
             self._media_opts.append(":sout=#chromecast{ip=%s,port=%d}" % chromecast)
             self._media_opts.append(":demux-filter=demux_chromecast")
-        self._instance = vlc.Instance(*instance_opts)
+        self._instance = cast(vlc.Instance, vlc.Instance(*instance_opts))
         self._mediaplayer = self._instance.media_player_new()
         vlc_events = self._mediaplayer.event_manager()
-        vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, juggler.song_finished, 1)
-        vlc_events.event_attach(vlc.EventType.MediaPlayerEncounteredError, juggler.song_finished, 1)
+        vlc_events.event_attach(
+            vlc.EventType.MediaPlayerEndReached,  # pyright: ignore[reportAttributeAccessIssue]
+            juggler.song_finished,
+            1,
+        )
+        vlc_events.event_attach(
+            vlc.EventType.MediaPlayerEncounteredError,  # pyright: ignore[reportAttributeAccessIssue]
+            juggler.song_finished,
+            1,
+        )
         self._playingDubstep = False
-        self._shouldPlayDubstep = (random.randint(0, 1) == 1)
+        self._shouldPlayDubstep = random.randint(0, 1) == 1
         self.play_fallback()
 
     def release(self):
@@ -39,25 +54,26 @@ class Player:
         self._shouldPlayDubstep = not self._shouldPlayDubstep
 
     def _get_link_url(self, link):
-        ydl_opts = {
-            'cookies': 'cookies.txt',
-            'quiet': True,
-            'format': 'bestaudio/best'
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(
+            {
+                "cookiefile": "cookies.txt",
+                "quiet": True,
+                "format": "bestaudio/best",
+            }
+        ) as ydl:
             info_dict = ydl.extract_info(link, download=False)
             return info_dict.get("url", None)
 
     def _play_mrl(self, mrl):
-       self._mediaplayer.set_mrl(mrl, *self._media_opts)
-       self._mediaplayer.play()
+        self._mediaplayer.set_mrl(mrl, *self._media_opts)
+        self._mediaplayer.play()
 
     def play(self, track):
         try:
             self._handleDubstep()
-            print("Now playing: "+track['filename'])
-            mrl = track['mrl']
-            if track['type'] == 'link':
+            print("Now playing: " + track["filename"])
+            mrl = track["mrl"]
+            if track["type"] == "link":
                 mrl = self._get_link_url(mrl)
             self._play_mrl(mrl)
         except Exception as err:
