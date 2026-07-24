@@ -67,7 +67,7 @@ class IndexHandler(tornado.web.RequestHandler):
 
 
 @tornado.web.stream_request_body
-class Upload(tornado.web.RequestHandler):
+class AddFile(tornado.web.RequestHandler):
     def prepare(self):
         self.fh: IO[bytes] | None = None
         self.metadata: mp3Juggler.FileTrackInput | None = None
@@ -155,6 +155,65 @@ class Upload(tornado.web.RequestHandler):
         super().on_connection_close()
 
 
+class AddLink(tornado.web.RequestHandler):
+    def post(self):
+        try:
+            link = self.request.body.decode()
+            if (
+                spotify_scraper
+                and youtube_search
+                and (
+                    link.startswith("spotify:track:")
+                    or link.startswith("https://open.spotify.com/track/")
+                )
+            ):
+                with spotify_scraper.SpotifyClient() as client:
+                    spotify_track = client.get_track(link)
+                    results = cast(
+                        list[dict[str, Any]],
+                        youtube_search.YoutubeSearch(
+                            f"{', '.join(artist.name for artist in spotify_track.artists)} - {spotify_track.name}"
+                        ).to_dict(),
+                    )
+                    if results and (youtube_id := results[0].get("id")):
+                        link = f"https://youtu.be/{youtube_id}"
+                    else:
+                        raise Exception(
+                            "Failed to find alternative link for Spotify track, sorry!"
+                        )
+            if not link.startswith("http://") and not link.startswith("https://"):
+                raise Exception("Only web links, please")
+            with yt_dlp.YoutubeDL(
+                {
+                    "cookiefile": "cookies.txt",
+                    "quiet": True,
+                    "format": "bestaudio/best",
+                }
+            ) as ydl:
+                info_dict = ydl.extract_info(link, download=False)
+                title = info_dict.get("title") or link
+            assert juggler is not None
+            juggler.juggle(
+                {
+                    "type": "link",
+                    "upload_id": self.request.headers.get("Upload-Id"),
+                    "nick": self.request.headers.get("Nick"),
+                    "title": title,
+                    "address": remote_ip(self.request),
+                    "mrl": link,
+                },
+                self.request.headers.get("Parent-Id"),
+            )
+            self.finish()  # pyright: ignore[reportUnknownMemberType]
+        except Exception as err:
+            print(err)
+            self.clear()
+            self.set_status(500)
+            self.finish(  # pyright: ignore[reportUnknownMemberType]
+                error_message(err),
+            )
+
+
 class Download(tornado.web.RequestHandler):
     def get(self, track_id: str):
         try:
@@ -212,61 +271,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                 parsed_json, dict
             ), f"Expected dict, got {type(parsed_json).__name__}"
             match parsed_json.get("type"):
-                case "link":
-                    link = str(parsed_json.get("link", ""))
-                    if (
-                        spotify_scraper
-                        and youtube_search
-                        and (
-                            link.startswith("spotify:track:")
-                            or link.startswith("https://open.spotify.com/track/")
-                        )
-                    ):
-                        with spotify_scraper.SpotifyClient() as client:
-                            spotify_track = client.get_track(link)
-                            results = cast(
-                                list[dict[str, Any]],
-                                youtube_search.YoutubeSearch(
-                                    f"{', '.join(artist.name for artist in spotify_track.artists)} - {spotify_track.name}"
-                                ).to_dict(),
-                            )
-                            if results and (youtube_id := results[0].get("id")):
-                                link = f"https://youtu.be/{youtube_id}"
-                            else:
-                                raise Exception(
-                                    "Failed to find alternative link for Spotify track, sorry!"
-                                )
-                    if not link.startswith("http://") and not link.startswith(
-                        "https://"
-                    ):
-                        raise Exception("Only web links, please")
-                    with yt_dlp.YoutubeDL(
-                        {
-                            "cookiefile": "cookies.txt",
-                            "quiet": True,
-                            "format": "bestaudio/best",
-                        }
-                    ) as ydl:
-                        info_dict = ydl.extract_info(link, download=False)
-                        title = info_dict.get("title") or link
-
-                    def _safe_val(key: str):
-                        val = parsed_json.get(key)
-                        if val is None:
-                            return None
-                        return str(val)
-
-                    juggler.juggle(
-                        {
-                            "type": "link",
-                            "upload_id": _safe_val("upload_id"),
-                            "nick": _safe_val("nick"),
-                            "title": title,
-                            "address": remote_ip(self.request),
-                            "mrl": link,
-                        },
-                        _safe_val("parent"),
-                    )
                 case "skip":
                     juggler.cancel(
                         parsed_json.get("id", "ERR"), remote_ip(self.request)
@@ -300,7 +304,8 @@ def start(
         [
             (r"/ws", WSHandler),
             (r"/", IndexHandler),
-            (r"/upload", Upload),
+            (r"/add-file", AddFile),
+            (r"/add-link", AddLink),
             (r"/download/(.*)", Download),
         ],
         # compiled_template_cache=False,  # Useful when editing index.html

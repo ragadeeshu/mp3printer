@@ -156,7 +156,7 @@
     flex-direction: column;
   }
 
-  #overlay {
+  #drop-overlay, #busy-overlay {
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -171,17 +171,32 @@
     font-weight: bold;
     text-align: center;
     color: #D0B11B;
-    border: 10px dashed #D0B11B;
     cursor: default;
     font-size: 3em;
-
   }
-  #overlay > p {
+  #drop-overlay::after, #busy-overlay::after {
     position: absolute;
     top: 50%;
     left: 0;
     right: 0;
     margin-top: -1em;
+  }
+
+  #drop-overlay {
+    border: 10px dashed #D0B11B;
+  }
+  #drop-overlay::after {
+    content: 'Drop files of links here to add them to the queue';
+  }
+
+  #busy-overlay::after {
+    content: 'Adding tracks to queue...';
+    animation: blink 2s infinite;
+  }
+  @keyframes blink {
+    0% { opacity: 1.0; }
+    50% { opacity: 0.25; }
+    100% { opacity: 1.0; }
   }
 
   #page_body {
@@ -275,19 +290,14 @@
     });
   }
 
-  // log function
-  log = function(data){
-    $('div#terminal').prepend('<br/>' +data);
-    console.log(data);
-  };
-
   var lastDragTarget = null;
   var overlayTimeout = null;
+  var ongoingUploads = 0;
 
-  function FileDragHover(e) {
+  function fileDragHover(e) {
     e.stopPropagation();
     e.preventDefault();
-    var overlay = $('#overlay');
+    var overlay = $('#drop-overlay');
     if(e.type == 'dragover'){
       lastDragTarget = e.target;
       if(!overlay.is(':visible')) {
@@ -305,10 +315,10 @@
     }
   }
 
-  function FileDropHandler(e) {
+  function fileDropHandler(e) {
     e.stopPropagation();
     e.preventDefault();
-    $('#overlay').fadeOut('fast');
+    $('#drop-overlay').stop(true).fadeOut('fast');
     var dt = e.originalEvent.dataTransfer;
     if (dt && dt.items) {
       var items = dt.items;
@@ -319,51 +329,52 @@
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
         if (item.kind == 'file') {
-          if (!AddFile(item.getAsFile(), uploads)) {
+          if (!addFile(item.getAsFile(), uploads)) {
             return false;
           }
         } else if (item.kind == 'string' && item.type == 'text/plain') {
           var lines = dt.getData('text/plain').split('\n');
           for (var l = 0; l < lines.length; l++) {
-            if (!AddLink(lines[l], uploads)) {
+            if (!addLink(lines[l], uploads)) {
               return false;
             }
           }
         }
       }
-      UploadTracks(uploads);
+      uploadTracks(uploads);
     }
     else {
       addError('Please upgrade your browser...');
     }
   }
 
-  function FileInputHandler(files) {
+  function fileInputHandler(files) {
     var uploads = [];
     for (var i = 0; i < files.length; i++) {
-      if (!AddFile(files[i], uploads)) {
+      if (!addFile(files[i], uploads)) {
         return false;
       }
     }
-    UploadTracks(uploads);
+    uploadTracks(uploads);
   }
 
-  function LinkInputHandler(link) {
+  function linkInputHandler(link) {
+    if (!link) { return; }
     var uploads = [];
-    if (!AddLink(link, uploads)) {
+    if (!addLink(link, uploads)) {
       return false;
     }
-    UploadTracks(uploads);
+    uploadTracks(uploads);
   }
 
-  function AddFile(file, uploads) {
+  function addFile(file, uploads) {
     if (file.size > 0) {
       uploads.push({ 'type': 'file', 'file': file });
     }
     return true;
   }
 
-  function AddLink(link, uploads) {
+  function addLink(link, uploads) {
     var re_host = window.location.host.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     var host_match = new RegExp('^https?://' + re_host);
     if (!link.match(host_match)) {
@@ -372,54 +383,78 @@
     return true;
   }
 
-  function UploadId(nick, name) {
+  function uploadId(nick, name) {
     return nick + ':' + name + ':' + ((new Date()).getTime() + Math.random());
   }
 
-  function UploadTracks(uploads) {
+  function uploadTracks(uploads) {
     if (uploads.length > 10) {
       addError('Please, no more than 10 tracks at a time.');
       return false;
     }
     var nick = $('#nickname').val();
     var last_id = null;
+    startUploads(uploads.length);
     for (var i = 0; i < uploads.length; i++) {
       var upload = uploads[i];
-      switch(upload.type) {
-      case 'file':
-        var id = UploadId(nick, upload.file.name);
+      try {
         var req = new XMLHttpRequest();
         req.onreadystatechange = function (aEvt) {
-          if (req.readyState == 4 && req.status != 200) {
-            addError(req.responseText);
+          if (req.readyState == 4) {
+            uploadDone();
+            if (req.status != 200) {
+              addError(req.responseText);
+            }
           }
         };
-        req.open('put', 'upload', true)
-        req.setRequestHeader('Filename', upload.file.name);
+        var id, body;
+        switch(upload.type) {
+        case 'file':
+          id = uploadId(nick, upload.file.name);
+          body = upload.file;
+          req.open('put', 'add-file', true);
+          req.setRequestHeader('Filename', upload.file.name);
+          req.setRequestHeader('Content-Type', upload.file.type);
+          break;
+        case 'link':
+          id = uploadId(nick, upload.link);
+          body = upload.link;
+          req.open('post', 'add-link', true);
+          break;
+        default:
+          throw new Error("Unsupported type '"+upload.type+"'");
+        }
         req.setRequestHeader('Nick', nick);
         req.setRequestHeader('Upload-Id', id);
-        req.setRequestHeader('Content-Type', upload.file.type);
         if (last_id) {
           req.setRequestHeader('Parent-Id', last_id);
         }
-        req.send(upload.file);
+        req.send(body);
         last_id = id;
-        break;
-      case 'link':
-        var id = UploadId(nick, upload.link);
-        var linkToUpload = {
-          'type': 'link',
-          'id': id,
-          'nick': nick,
-          'link': upload.link
-        };
-        if (last_id) {
-          linkToUpload.parent = last_id;
-        }
-        sendWS(JSON.stringify(linkToUpload));
-        id = last_id;
-        break;
+      } catch(err) {
+        addError(err.message);
+        uploadDone();
       }
+    }
+  }
+
+  function startUploads(count) {
+    ongoingUploads += count;
+    if (ongoingUploads > 0) {
+      var overlay = $('#busy-overlay');
+      if(!overlay.is(':visible')) {
+        overlay.stop(true).fadeIn('fast');
+      }
+    }
+  }
+
+  function uploadDone() {
+    if (ongoingUploads > 0) {
+      ongoingUploads--;
+    }
+    if (ongoingUploads <= 0) {
+      ongoingUploads = 0;
+      $('#busy-overlay').stop(true).fadeOut('fast');
     }
   }
 
@@ -520,29 +555,26 @@
       selector.click();
     });
     selector.on('change', function() {
-      FileInputHandler(selector.get(0).files);
+      fileInputHandler(selector.get(0).files);
     })
     $('#upload_link').click(function() {
-      LinkInputHandler(prompt('Link URL:'));
+      linkInputHandler(prompt('Link URL:'));
     });
 
     setInterval(disclaimer, 120);
 
     connectWS();
 
-    $('html').on('dragover', FileDragHover);
-    $('html').on('dragleave', FileDragHover);
-    $('html').on('drop', FileDropHandler);
+    $('html').on('dragover', fileDragHover);
+    $('html').on('dragleave', fileDragHover);
+    $('html').on('drop', fileDropHandler);
   });
   </script>
 </head>
 
 <body>
-  <div id="overlay" class="child-elements">
-    <p>
-      Drop files or links here to upload!
-    </p>
-  </div>
+  <div id="busy-overlay" class="child-elements"></div>
+  <div id="drop-overlay" class="child-elements"></div>
   <section id="page_body" class="child-elements">
     <div id="page_title">
       <h1>
