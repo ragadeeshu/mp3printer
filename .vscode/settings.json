@@ -1,0 +1,15 @@
+{
+	"[python]": {
+		"editor.defaultFormatter": "ms-python.black-formatter",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit"
+		},
+	},
+	"isort.args": [
+		"--profile",
+		"black"
+	],
+	"python.analysis.diagnosticsSource": "Pylance",
+	"python-envs.defaultEnvManager": "ms-python.python:venv"
+}
