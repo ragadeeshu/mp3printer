@@ -18,11 +18,19 @@ import tornado.web
 import tornado.websocket
 import yt_dlp
 
-# optional lib
+# optional libs
 try:
+    # Chromecast support
     import pychromecast.discovery
 except ModuleNotFoundError:
     pychromecast = None
+try:
+    # Spotify "support"
+    import spotify_scraper
+    import youtube_search  # pyright: ignore[reportMissingTypeStubs]
+except ModuleNotFoundError:
+    spotify_scraper = None
+    youtube_search = None
 
 # local libs
 import connections
@@ -206,6 +214,28 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             match parsed_json.get("type"):
                 case "link":
                     link = str(parsed_json.get("link", ""))
+                    if (
+                        spotify_scraper
+                        and youtube_search
+                        and (
+                            link.startswith("spotify:track:")
+                            or link.startswith("https://open.spotify.com/track/")
+                        )
+                    ):
+                        with spotify_scraper.SpotifyClient() as client:
+                            spotify_track = client.get_track(link)
+                            results = cast(
+                                list[dict[str, Any]],
+                                youtube_search.YoutubeSearch(
+                                    f"{', '.join(artist.name for artist in spotify_track.artists)} - {spotify_track.name}"
+                                ).to_dict(),
+                            )
+                            if results and (youtube_id := results[0].get("id")):
+                                link = f"https://youtu.be/{youtube_id}"
+                            else:
+                                raise Exception(
+                                    "Failed to find alternative link for Spotify track, sorry!"
+                                )
                     if not link.startswith("http://") and not link.startswith(
                         "https://"
                     ):
