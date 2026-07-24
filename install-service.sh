@@ -61,8 +61,11 @@ for x in "$@"; do
   args="$args $x"
 done
 
+python="$(which python3)"
+
 echo "# Will install service file for running mp3 printer with these settings:"
 echo "  - Working dir: $dir"
+echo "  - Python binary: $python"
 echo "  - User: $user ($uid)"
 echo "  - Group: $group ($gid)"
 echo "  - Arguments:${args:- (none)}"
@@ -84,7 +87,7 @@ Description=mp3 Printer
 User=$uid
 Group=$gid
 WorkingDirectory=$dir
-ExecStart=$(which python3) main.py$args
+ExecStart=$python main.py$args
 Sockets=mp3printer.socket
 StandardInput=socket
 StandardOutput=journal
