@@ -67,8 +67,6 @@
     -webkit-border-radius: 3px;
     border-radius: 3px;
 
-    -moz-box-shadow: 0px 0px 3px 0px #D0B11B;
-    -webkit-box-shadow: 0px 0px 3px 0px #D0B11B;
     box-shadow: 0px 0px 3px 0px #D0B11B;
 
     margin: 0.25em;
@@ -121,11 +119,12 @@
     -webkit-border-radius: 3px;
     border-radius: 3px;
 
-    -moz-box-shadow: 0px 0px 3px 0px #D01B1B;
-    -webkit-box-shadow: 0px 0px 3px 0px #D01B1B;
     box-shadow: 0px 0px 3px 0px #D01B1B;
 
     margin: 0.25em 0;
+
+    opacity: 0;
+    transition: opacity 0.6s;
   }
 
   #errors div::before {
@@ -134,6 +133,39 @@
   }
   #errors div:empty::after {
     content: 'Unknown error.';
+  }
+
+  #upload-status {
+    display: inline-block;
+    padding: 0.25em;
+
+    text-align: left;
+
+    border: #D0B11B 1px solid;
+
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+
+    box-shadow: 0px 0px 3px 0px #D0B11B;
+
+    margin: 0.25em 0 1em;
+
+    animation: blink 2s infinite paused;
+  }
+  #upload-status::before {
+    content: 'Adding ';
+  }
+  #upload-status::after {
+    content: ' track(s) to queue...';
+  }
+  #upload-status.blinking {
+    animation-play-state: running;
+  }
+  @keyframes blink {
+    0% { color: rgba(208, 177,27, 1.0); }
+    50% { color: rgba(208, 177,27, 0.5); }
+    100% { color: rgba(208, 177,27, 1.0); }
   }
 
   #foot{
@@ -156,7 +188,7 @@
     flex-direction: column;
   }
 
-  #drop-overlay, #busy-overlay {
+  #drop-overlay {
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -174,7 +206,7 @@
     cursor: default;
     font-size: 3em;
   }
-  #drop-overlay::after, #busy-overlay::after {
+  #drop-overlay::after {
     position: absolute;
     top: 50%;
     left: 0;
@@ -187,16 +219,6 @@
   }
   #drop-overlay::after {
     content: 'Drop files of links here to add them to the queue';
-  }
-
-  #busy-overlay::after {
-    content: 'Adding tracks to queue...';
-    animation: blink 2s infinite;
-  }
-  @keyframes blink {
-    0% { opacity: 1.0; }
-    50% { opacity: 0.25; }
-    100% { opacity: 1.0; }
   }
 
   #page_body {
@@ -439,11 +461,15 @@
   }
 
   function startUploads(count) {
+    if (count < 0) { return; }
     ongoingUploads += count;
     if (ongoingUploads > 0) {
-      var overlay = $('#busy-overlay');
-      if(!overlay.is(':visible')) {
-        overlay.stop(true).fadeIn('fast');
+      var status = $('#upload-status');
+      status.text(ongoingUploads);
+      if(!status.is(':visible')) {
+        status.stop(true).fadeIn('slow', function() {
+          status.addClass('blinking');
+        });
       }
     }
   }
@@ -452,9 +478,12 @@
     if (ongoingUploads > 0) {
       ongoingUploads--;
     }
+    var status = $('#upload-status');
     if (ongoingUploads <= 0) {
       ongoingUploads = 0;
-      $('#busy-overlay').stop(true).fadeOut('fast');
+      status.stop(true).removeClass('blinking').fadeOut('slow');
+    } else {
+      status.text(ongoingUploads);
     }
   }
 
@@ -573,7 +602,6 @@
 </head>
 
 <body>
-  <div id="busy-overlay" class="child-elements"></div>
   <div id="drop-overlay" class="child-elements"></div>
   <section id="page_body" class="child-elements">
     <div id="page_title">
@@ -598,6 +626,7 @@
       <label id="connection">NO CONNECTION<br>Wait a while, or refresh the page.</label>
       <div id="errors"></div>
     </div>
+    <div id="upload-status" style="display: none">0</div>
     <div id ="printlist">
     </div>
     <div id="terminal">
